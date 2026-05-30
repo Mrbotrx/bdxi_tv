@@ -1,0 +1,39 @@
+name: Auto Update IPTV Playlist
+
+on:
+  schedule:
+    - cron: '*/35 * * * *' # প্রতি ৩৫ মিনিট পর পর অটো রান হবে
+  workflow_dispatch: # ম্যানুয়ালি রান করার অপশন
+
+jobs:
+  update-list:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.x'
+
+    - name: Install Dependencies
+      run: |
+        pip install requests
+
+    - name: Run Bot
+      env:
+        # গিটহাব সিক্রেট থেকে সোর্স লিংক রিড করা হচ্ছে
+        SOURCE_PLAYLIST_URL: ${{ secrets.SOURCE_PLAYLIST_URL }}
+      run: python bot.py
+
+    - name: Commit and Push Changes
+      env:
+        # আপনার তৈরি করা সিক্রেট নাম kbtvpro এখানে ব্যবহার করা হয়েছে
+        GITHUB_TOKEN: ${{ secrets.kbtvpro }}
+      run: |
+        git config --local user.email "actions@github.com"
+        git config --local user.name "GitHub Actions Bot"
+        git add playlist.m3u8
+        git commit -m "Auto-update playlist: $(date)" || exit 0
+        git push
