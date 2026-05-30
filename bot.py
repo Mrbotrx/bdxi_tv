@@ -1,13 +1,16 @@
 import requests
 import os
 import sys
+import base64
 
-# GitHub Secret থেকে সোর্স লিংকটি রিড করা হচ্ছে (কোডে লিংক হাইড থাকবে)
+# ১. সোর্স লিংকটিকে Base64 দিয়ে এনকোড করে রাখা হয়েছে (কোডে সরাসরি লিংক দেখা যাবে না)
+# এনকোডেড টেক্সট: "aHR0cHM6Ly9yYXcuZ2l0aHVidXNlcmNvbnRlbnQuY29tL2FidXNhZWVpZHgvTXJnaWZ5LUJESVgtSVBUVi9yZWZzL2hlYWRzL21haW4vcGxheWxpc3QubTN1"
+ENCODED_URL = b'aHR0cHM6Ly9yYXcuZ2l0aHVidXNlcmNvbnRlbnQuY29tL2FidXNhZWVpZHgvTXJnaWZ5LUJESVgtSVBUVi9yZWZzL2hlYWRzL21haW4vcGxheWxpc3QubTN1'
+
+# ২. প্রথমে GitHub Secret চেক করবে, না পেলে হিডেন লিংকটি ডিকোড করে নেবে
 SOURCE_URL = os.environ.get("SOURCE_PLAYLIST_URL")
-
-if not SOURCE_URL:
-    print("Error: SOURCE_PLAYLIST_URL secret is missing in GitHub Settings!")
-    sys.exit(1)
+if not SOURCE_URL or SOURCE_URL.strip() == "":
+    SOURCE_URL = base64.b64decode(ENCODED_URL).decode('utf-8')
 
 def check_stream(url):
     """স্ট্রিমিং লিংকটি সচল এবং লাইভ কিনা তা পরীক্ষা করে"""
@@ -22,7 +25,7 @@ def check_stream(url):
 
 def parse_and_filter():
     try:
-        print("Fetching source playlist...")
+        print("Fetching source playlist securely...")
         response = requests.get(SOURCE_URL, timeout=10)
         if response.status_code != 200:
             print("Failed to fetch source playlist")
