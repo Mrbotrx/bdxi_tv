@@ -6,7 +6,7 @@
 
 ---
 ```text
-https://raw.githubusercontent.com/Mrbotrx/bdxi_tv/refs/heads/main/kbtvpro.m3u8
+https://raw.githubusercontent.com/Mrbotrx/bdxi_tv/main/kbtvpro.m3u8
 ```
 
 ### 🌐 LIVE STREAM SYSTEM
