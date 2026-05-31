@@ -9,7 +9,7 @@
 ---
 
 ### ⚡ ARCHITECTURE OVERVIEW
-**BDXI TV** হলো বাংলাদেশ নেটওয়ার্ক এনভায়রনমেন্টের (BDIX) জন্য অপ্টিমাইজড একটি হাই-পারফরম্যান্স লাইভ টেলিভিশন স্ট্রিমিং সলিউশন। ব্যাকএন্ডে থাকা **kbpro tv iptv bot** প্রতি ৩৫ মিনিট পর পর সোর্স ফাইল স্ক্র্যাপ করে, ডেড লিংক ও প্রোমো ভিডিও ফিল্টার করে এবং সোর্স লিংকটি সম্পূর্ণ লুকিয়ে রেখে একটি ফ্রেশ `kbtvpro.m3u8` প্লেলিস্ট জেনারেট করে।
+**BDXI TV** হলো বাংলাদেশ নেটওয়ার্ক এনভায়রনমেন্টের (BDIX) জন্য অপ্টিমাইজড একটি হাই-পারফরম্যান্স লাইভ টেলিভিশন স্ট্রিমিং সলিউশন। ব্যাকএন্ডে থাকা **kbpro tv iptv bot** প্রতি ৩৫ মিনিট পর পর সোর্স ফাইল স্ক্র্যাপ করে, ডেড লিংক ও প্রোমো ভিডিও ফিল্টার করে প্লেলিস্ট জেনারেট করে।
 
 ---
 
@@ -19,7 +19,7 @@
 ```text
 [https://raw.githubusercontent.com/Mrbotrx/bdxi_tv/refs/heads/main/kbtvpro.m3u8](https://raw.githubusercontent.com/Mrbotrx/bdxi_tv/refs/heads/main/kbtvpro.m3u8)
 ```
-###INFRASTRUCTURE & HUB CONFIG
+### INFRASTRUCTURE & HUB CONFIG
 
 [SYSTEM]
 Developer     = "KB CYBER TEAM"
@@ -30,6 +30,9 @@ Status        = "LIVE / UPDATED"
 
 [NETWORKS]
 Web Panel     = "[https://kbtvpro.totalh.net/](https://kbtvpro.totalh.net/)"
+
 Source Repo   = "[https://github.com/Mrbotrx](https://github.com/Mrbotrx)"
-Telegram Ch   = "[https://t.me/KBCYBERTEAM](https://t.me/KBCYBERTEAM)"
+
+Telegram Ch   = "[https://t.me/KBCYBERTEAM](https://t.me/KBCYBERTEAM)
+
 Community Hub = "[https://t.me/iptvlinksm3u8](https://t.me/iptvlinksm3u8)"
