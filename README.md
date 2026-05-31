@@ -1,7 +1,7 @@
 
 ---
 
-### ⚡ ARCHITECTURE OVERVIEW
+### ⚡ KB PRO TV INFO
 **BDXI TV** হলো বাংলাদেশ নেটওয়ার্ক এনভায়রনমেন্টের (BDIX) জন্য অপ্টিমাইজড একটি হাই-পারফরম্যান্স লাইভ টেলিভিশন স্ট্রিমিং সলিউশন। ব্যাকএন্ডে থাকা **kbpro tv iptv bot** প্রতি ৩৫ মিনিট পর পর সোর্স ফাইল স্ক্র্যাপ করে, ডেড লিংক ও প্রোমো ভিডিও ফিল্টার করে প্লেলিস্ট জেনারেট করে।
 
 ---
@@ -9,7 +9,7 @@
 https://raw.githubusercontent.com/Mrbotrx/bdxi_tv/refs/heads/main/kbtvpro.m3u8
 ```
 
-### 🌐 LIVE STREAM ENDPOINT (M3U8)
+### 🌐 LIVE STREAM SYSTEM
 নিচের লিংকটি সরাসরি কপি করে আপনার পছন্দের যেকোনো আইপিটিভি প্লেয়ারে (VLC, OTT Navigator, Televizo, MX Player বা KB TV App) ব্যবহার করুন. 
 
 ### INFRASTRUCTURE & HUB CONFIG
@@ -30,8 +30,7 @@ Telegram Ch   = "[https://t.me/KBCYBERTEAM](https://t.me/KBCYBERTEAM)
 
 Community Hub = "[https://t.me/iptvlinksm3u8](https://t.me/iptvlinksm3u8)"
 
-# 📡 BDXI TV (KBPRO TV) — NEXT-GEN IPTV AUTOMATION
-
+# 📡 BDXI TV (KBPRO TV) — IPTV
 <p align="center">
   <img src="https://img.shields.io/badge/System--Status-ACTIVE%20%2F%20LIVE-00FF66?style=for-the-badge&logo=githubactions&logoColor=black" alt="Status">
   <img src="https://img.shields.io/badge/Sync--Interval-35%20MINUTES-00E5FF?style=for-the-badge&logo=python&logoColor=black" alt="Interval">
