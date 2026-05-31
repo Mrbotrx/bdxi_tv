@@ -1,10 +1,10 @@
-name: Kb pro iptv bot
+name: KBprotv IPTV BOT
 
 on:
   schedule:
     # প্রতি ৩৫ মিনিট পর পর স্বয়ংক্রিয়ভাবে রান হবে
     - cron: '*/35 * * * *'
-  workflow_dispatch: # ইচ্ছা হলে হাত দিয়েও রান করতে পারবেন
+  workflow_dispatch: # হাত দিয়ে ম্যানুয়ালি রান করার অপশন
 
 jobs:
   update-playlist:
@@ -22,11 +22,11 @@ jobs:
     - name: Install Dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install requests
+        pip install requests pytz
 
     - name: Run Bot Script
       env:
-        # এখানে আপনার লুকানো গোপন লিংকটি বটের রানটাইমে পাস করা হচ্ছে
+        # GitHub Secrets থেকে ব্যাকএন্ডে সোর্স লিংক পাস করা হচ্ছে
         KBPROTV: ${{ secrets.KBPROTV }}
       run: python bot.py
 
@@ -36,6 +36,7 @@ jobs:
         git config --local user.name "github-actions[bot]"
         git add kbtvpro.m3u8
         
+        # কোনো পরিবর্তন না থাকলে ফালতু বিল্ড লুপ এড়াতে কমিন্ট করবে না
         if git diff --staged --quiet; then
           echo "No changes detected."
         else
