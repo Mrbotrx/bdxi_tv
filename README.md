@@ -1,33 +1,35 @@
-# 📡 BDXI TV — NEXT-GEN IPTV AUTOMATION
-> **Automated Network Stream Core engineered by KB CYBER TEAM.**
+# 📡 BDXI TV (KBPRO TV) — NEXT-GEN IPTV AUTOMATION
 
 <p align="center">
-  <img src="https://img.shields.io/badge/System-ACTIVE-00FF66?style=for-the-badge&logo=githubactions&logoColor=black" alt="Status">
-  <img src="https://img.shields.io/badge/Update--Interval-35%20MINUTES-00E5FF?style=for-the-badge&logo=python&logoColor=black" alt="Interval">
+  <img src="https://img.shields.io/badge/System--Status-ACTIVE%20%2F%20LIVE-00FF66?style=for-the-badge&logo=githubactions&logoColor=black" alt="Status">
+  <img src="https://img.shields.io/badge/Sync--Interval-35%20MINUTES-00E5FF?style=for-the-badge&logo=python&logoColor=black" alt="Interval">
   <img src="https://img.shields.io/badge/Core-M3U8%20ONLY-FF0055?style=for-the-badge" alt="Core">
 </p>
 
 ---
 
 ### ⚡ ARCHITECTURE OVERVIEW
-**BDXI TV** is a high-performance live television pipeline optimized for Bangladeshi network environments. Powered by the proprietary **kbpro tv iptv bot**, the engine securely intercepts network playlists, isolates raw `.m3u8` transport streams, strips out latency-inducing promo materials, and serves a sanitized, optimized payload.
+**BDXI TV** হলো বাংলাদেশ নেটওয়ার্ক এনভায়রনমেন্টের (BDIX) জন্য অপ্টিমাইজড একটি হাই-পারফরম্যান্স লাইভ টেলিভিশন স্ট্রিমিং সলিউশন। ব্যাকএন্ডে থাকা **kbpro tv iptv bot** প্রতি ৩৫ মিনিট পর পর সোর্স ফাইল স্ক্র্যাপ করে, ডেড লিংক ও প্রোমো ভিডিও ফিল্টার করে এবং সোর্স লিংকটি সম্পূর্ণ লুকিয়ে রেখে একটি ফ্রেশ `kbtvpro.m3u8` প্লেলিস্ট জেনারেট করে।
 
 ---
 
-### 🌐 ENDPOINT CONFIGURATION (M3U8)
-Add this master URL directly into your production application, IPTV panel, or media client (VLC, OTT Navigator, Televizo, or KB TV App):
+### 🌐 LIVE STREAM ENDPOINT (M3U8)
+নিচের লিংকটি সরাসরি কপি করে আপনার পছন্দের যেকোনো আইপিটিভি প্লেয়ারে (VLC, OTT Navigator, Televizo, MX Player বা KB TV App) ব্যবহার করুন:
 
 ```text
 [https://raw.githubusercontent.com/Mrbotrx/bdxi_tv/refs/heads/main/kbtvpro.m3u8](https://raw.githubusercontent.com/Mrbotrx/bdxi_tv/refs/heads/main/kbtvpro.m3u8)
+```
+###INFRASTRUCTURE & HUB CONFIG
 
 [SYSTEM]
 Developer     = "KB CYBER TEAM"
 Core Engine   = "kbpro-tv-iptv-bot"
 Sync Clock    = "35 Minutes / Cron Interval"
 Timezone      = "Asia/Dhaka (BST)"
+Status        = "LIVE / UPDATED"
 
 [NETWORKS]
 Web Panel     = "[https://kbtvpro.totalh.net/](https://kbtvpro.totalh.net/)"
-Source Repository = "[https://github.com/Mrbotrx](https://github.com/Mrbotrx)"
-Telegram Broadcast = "[https://t.me/KBCYBERTEAM](https://t.me/KBCYBERTEAM)"
+Source Repo   = "[https://github.com/Mrbotrx](https://github.com/Mrbotrx)"
+Telegram Ch   = "[https://t.me/KBCYBERTEAM](https://t.me/KBCYBERTEAM)"
 Community Hub = "[https://t.me/iptvlinksm3u8](https://t.me/iptvlinksm3u8)"
