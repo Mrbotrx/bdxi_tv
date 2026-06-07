@@ -39,7 +39,7 @@ def fetch_and_filter_playlist():
 
     all_lines = []
 
-    # Load all sources
+    # Load sources
     for source_url in SOURCE_URLS:
         if not source_url:
             continue
@@ -154,23 +154,26 @@ def fetch_and_filter_playlist():
 
     total_channels = len(final_playlist)
 
-    # HEADER (FIXED INDENTATION)
+    # ⭐ STYLED HEADER
     header_content = f"""#EXTM3U
-# 📡 IPTV STREAM HUB
-# 
-# 👨‍💻 Dev : KB CYBER TEAM  
-# 🌐 Panel : https://kbtvpro.totalh.net/  
-# 💻 GitHub : https://github.com/Mrbotrx  
-# 📢 Telegram : https://t.me/KBCYBERTEAM  
-# 
-# 📺 Channels : {total_channels} CHANNELS ONLINE (LOGO & SPEED VERIFIED)
-# • https://t.me/iptvlinksm3u8  
-# • https://t.me/KBCYBERTEAM  
-# 
-# 🕒 Time : {current_time}  
-# 🔄 Status : LIVE / UPDATED  
-# 
-# 📬 @KBCYBERTEAM 
+############################################
+#            📡 IPTV STREAM HUB           #
+############################################
+# 👨‍💻 Dev      : KB CYBER TEAM
+# 🌐 Panel     : https://kbtvpro.totalh.net/
+# 💻 GitHub    : https://github.com/Mrbotrx
+# 📢 Telegram  : https://t.me/KBCYBERTEAM
+############################################
+# 📺 Total Channels : {total_channels}
+# 🔥 Status          : LIVE / AUTO VERIFIED
+# 🧪 Engine          : LINK CHECKER ACTIVE
+############################################
+# 🕒 Updated Time : {current_time}
+# 📍 Region       : Bangladesh / India / Global
+############################################
+# 🚀 Powered by KB CYBER TEAM
+# 📬 Support: @KBCYBERTEAM
+############################################
 """
 
     with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
