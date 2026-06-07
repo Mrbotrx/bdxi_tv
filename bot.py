@@ -12,36 +12,22 @@ SOURCE_URLS = [
 
 OUTPUT_FILE = "kbtvpro.m3u8"
 
-# Default Logo
 DEFAULT_LOGO = "https://raw.githubusercontent.com/Mrbotrx/bdxi_tv/main/assets/default_tv.png"
 
 
 def check_live_stream(channel):
-    """Check if stream is alive"""
     info, link = channel
 
     try:
-        response = requests.head(
-            link,
-            timeout=3.0,
-            allow_redirects=True
-        )
-
+        response = requests.head(link, timeout=3.0, allow_redirects=True)
         if response.status_code == 200:
             return info, link
-
-    except requests.RequestException:
+    except:
         try:
-            response = requests.get(
-                link,
-                timeout=3.0,
-                stream=True
-            )
-
+            response = requests.get(link, timeout=3.0, stream=True)
             if response.status_code == 200:
                 return info, link
-
-        except requests.RequestException:
+        except:
             pass
 
     return None
@@ -51,45 +37,48 @@ def fetch_and_filter_playlist():
 
     all_lines = []
 
-    # Fetch all source playlists
+    # Load all sources
     for source_url in SOURCE_URLS:
-
         if not source_url:
             continue
 
         try:
-            print(f"Loading source: {source_url}")
-
-            response = requests.get(
-                source_url,
-                timeout=15
-            )
+            print(f"Loading: {source_url}")
+            response = requests.get(source_url, timeout=15)
 
             if response.status_code == 200:
                 all_lines.extend(response.text.splitlines())
-                print("Source loaded successfully")
-            else:
-                print(f"Failed to load source: {response.status_code}")
 
         except Exception as e:
-            print(f"Source Error: {e}")
+            print(f"Error loading source: {e}")
 
     if not all_lines:
-        print("No playlist data found!")
+        print("No data found!")
         return
 
     raw_bd_india_channels = []
     raw_other_channels = []
 
     current_info = None
-
-    # Duplicate link remover
     seen_links = set()
+
+    PRIORITY_KEYWORDS = [
+        "bd", "bangla", "bangladesh",
+        "india", "ind ", "zee", "star", "sony", "colors",
+
+        # Sports
+        "sports", "sport", "cricket", "football", "soccer",
+        "t sports", "tsports", "ten sports", "ptv sports",
+        "star sports", "sony sports", "sky sports",
+        "fox sports", "espn", "eurosport", "supersport",
+        "bein sports", "bein", "willow",
+        "astro cricket", "astro supersport",
+        "premier sports", "arena sport"
+    ]
 
     for line in all_lines:
 
         line = line.strip()
-
         if not line:
             continue
 
@@ -105,43 +94,22 @@ def fetch_and_filter_playlist():
             seen_links.add(line)
 
             is_mp4 = ".mp4" in line.lower()
-
-            is_promo = (
-                "promo" in line.lower()
-                or (
-                    current_info
-                    and "promo" in current_info.lower()
-                )
-            )
-
-            is_m3u8 = (
-                ".m3u8" in line.lower()
-                or "live" in line.lower()
-            )
+            is_promo = ("promo" in line.lower() or
+                        (current_info and "promo" in current_info.lower()))
+            is_m3u8 = (".m3u8" in line.lower() or "live" in line.lower())
 
             if is_m3u8 and not is_mp4 and not is_promo:
 
-                channel_meta = (
-                    current_info
-                    if current_info
-                    else '#EXTINF:-1 tvg-id="" tvg-name="Channel" tvg-logo="",Live Channel'
-                )
+                channel_meta = current_info if current_info else \
+                    '#EXTINF:-1 tvg-id="" tvg-name="Channel" tvg-logo="",Live Channel'
 
-                # Add default logo if missing
-                if (
-                    'tvg-logo=""' in channel_meta
-                    or 'tvg-logo' not in channel_meta
-                ):
-
+                if 'tvg-logo=""' in channel_meta or 'tvg-logo' not in channel_meta:
                     if 'tvg-logo=""' in channel_meta:
-
                         channel_meta = channel_meta.replace(
                             'tvg-logo=""',
                             f'tvg-logo="{DEFAULT_LOGO}"'
                         )
-
                     else:
-
                         channel_meta = channel_meta.replace(
                             "#EXTINF:-1",
                             f'#EXTINF:-1 tvg-logo="{DEFAULT_LOGO}"'
@@ -149,133 +117,55 @@ def fetch_and_filter_playlist():
 
                 meta_lower = channel_meta.lower()
 
-PRIORITY_KEYWORDS = [
-    "bd",
-    "bangla",
-    "bangladesh",
-    "india",
-    "ind ",
-    "zee",
-    "star",
-    "sony",
-    "colors",
-    "sports",
-    "sport",
-    "cricket",
-    "football",
-    "soccer",
-    "t sports",
-    "tsports",
-    "ten sports",
-    "ptv sports",
-    "star sports",
-    "sony sports",
-    "sky sports",
-    "fox sports",
-    "espn",
-    "eurosport",
-    "supersport",
-    "bein sports",
-    "bein",
-    "willow",
-    "astro cricket",
-    "astro supersport",
-    "premier sports",
-    "arena sport"
-]
+                is_priority = any(
+                    keyword in meta_lower
+                    for keyword in PRIORITY_KEYWORDS
+                )
 
-is_bd_or_in = any(
-    keyword in meta_lower
-    for keyword in PRIORITY_KEYWORDS
-)
-
-if is_bd_or_in:
-    raw_bd_india_channels.append(
-        (channel_meta, line)
-    )
-else:
-    raw_other_channels.append(
-        (channel_meta, line)
-)
+                if is_priority:
+                    raw_bd_india_channels.append((channel_meta, line))
+                else:
+                    raw_other_channels.append((channel_meta, line))
 
             current_info = None
 
-    print("Verifying links...")
+    print("Checking streams...")
 
     verified_bd_in = []
     verified_others = []
 
     with ThreadPoolExecutor(max_workers=20) as executor:
 
-        bd_results = executor.map(
-            check_live_stream,
-            raw_bd_india_channels
-        )
+        bd_results = executor.map(check_live_stream, raw_bd_india_channels)
+        other_results = executor.map(check_live_stream, raw_other_channels)
 
-        other_results = executor.map(
-            check_live_stream,
-            raw_other_channels
-        )
+        for r in bd_results:
+            if r:
+                verified_bd_in.append(r)
 
-        for res in bd_results:
-            if res:
-                verified_bd_in.append(res)
+        for r in other_results:
+            if r:
+                verified_others.append(r)
 
-        for res in other_results:
-            if res:
-                verified_others.append(res)
+    final_playlist = verified_bd_in + verified_others
 
-    final_playlist = (
-        verified_bd_in +
-        verified_others
-    )
+    dhaka_tz = pytz.timezone("Asia/Dhaka")
+    current_time = datetime.now(dhaka_tz).strftime("%I:%M %p | %d-%b-%Y")
 
-    total_channels = len(final_playlist)
-
-    dhaka_tz = pytz.timezone(
-        "Asia/Dhaka"
-    )
-
-    current_time = (
-        datetime.now(dhaka_tz).strftime(
-            "%I:%M %p | %d-%b-%Y"
-        )
-        + " (BST)"
-    )
-
-    header_content = f"""#EXTM3U
-# 📡 IPTV STREAM HUB
-#
-# 👨‍💻 Dev : KB CYBER TEAM
-# 🌐 Panel : https://kbtvpro.totalh.net/
-# 💻 GitHub : https://github.com/Mrbotrx
-# 📢 Telegram : https://t.me/KBCYBERTEAM
-#
-# 📺 Channels : {total_channels} CHANNELS ONLINE
-# 🔄 Multi Source Enabled
-#
-# 🕒 Time : {current_time}
-# ✅ Status : LIVE / UPDATED
-#
-# 📬 @KBCYBERTEAM
+    header = f"""#EXTM3U
+# IPTV STREAM HUB
+# Channels: {len(final_playlist)}
+# Time: {current_time} (BST)
 
 """
 
-    with open(
-        OUTPUT_FILE,
-        "w",
-        encoding="utf-8"
-    ) as f:
-
-        f.write(header_content)
+    with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
+        f.write(header)
 
         for info, link in final_playlist:
             f.write(f"{info}\n{link}\n")
 
-    print(
-        f"Playlist updated successfully! "
-        f"Total channels: {total_channels}"
-    )
+    print(f"Done! Total channels: {len(final_playlist)}")
 
 
 if __name__ == "__main__":
