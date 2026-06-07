@@ -149,21 +149,16 @@ def fetch_and_filter_playlist():
 
                 meta_lower = channel_meta.lower()
 
-                PRIORITY_KEYWORDS = [
-    # Bangladesh
+PRIORITY_KEYWORDS = [
     "bd",
     "bangla",
     "bangladesh",
-
-    # India Entertainment
     "india",
     "ind ",
     "zee",
     "star",
     "sony",
     "colors",
-
-    # Sports Channels
     "sports",
     "sport",
     "cricket",
@@ -194,14 +189,14 @@ is_bd_or_in = any(
     for keyword in PRIORITY_KEYWORDS
 )
 
-                if is_bd_or_in:
-                    raw_bd_india_channels.append(
-                        (channel_meta, line)
-                    )
-                else:
-                    raw_other_channels.append(
-                        (channel_meta, line)
-                    )
+if is_bd_or_in:
+    raw_bd_india_channels.append(
+        (channel_meta, line)
+    )
+else:
+    raw_other_channels.append(
+        (channel_meta, line)
+)
 
             current_info = None
 
