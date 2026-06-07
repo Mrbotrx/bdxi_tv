@@ -1,4 +1,5 @@
 import os
+import time
 from datetime import datetime
 import pytz
 import requests
@@ -186,4 +187,15 @@ def fetch_and_filter_playlist():
 
 
 if __name__ == "__main__":
-    fetch_and_filter_playlist()
+    while True:
+        try:
+            print("================================")
+            print("Starting playlist update...")
+            fetch_and_filter_playlist()
+            print("Playlist update completed.")
+            print("================================")
+        except Exception as e:
+            print(f"Error: {e}")
+
+        print("Next update in 35 minutes...")
+        time.sleep(35 * 60)
