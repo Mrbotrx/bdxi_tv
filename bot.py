@@ -23,12 +23,14 @@ def check_live_stream(channel):
         if response.status_code == 200:
             return info, link
     except:
-        try:
-            response = requests.get(link, timeout=3.0, stream=True)
-            if response.status_code == 200:
-                return info, link
-        except:
-            pass
+        pass
+
+    try:
+        response = requests.get(link, timeout=3.0, stream=True)
+        if response.status_code == 200:
+            return info, link
+    except:
+        pass
 
     return None
 
@@ -58,16 +60,14 @@ def fetch_and_filter_playlist():
 
     raw_bd_india_channels = []
     raw_other_channels = []
-
-    current_info = None
     seen_links = set()
+    current_info = None
 
     PRIORITY_KEYWORDS = [
         "bd", "bangla", "bangladesh",
-        "india", "ind ", "zee", "star", "sony", "colors",
+        "india", "zee", "star", "sony", "colors",
 
-        # Sports
-        "sports", "sport", "cricket", "football", "soccer",
+        "sports", "cricket", "football", "soccer",
         "t sports", "tsports", "ten sports", "ptv sports",
         "star sports", "sony sports", "sky sports",
         "fox sports", "espn", "eurosport", "supersport",
@@ -103,6 +103,7 @@ def fetch_and_filter_playlist():
                 channel_meta = current_info if current_info else \
                     '#EXTINF:-1 tvg-id="" tvg-name="Channel" tvg-logo="",Live Channel'
 
+                # Fix logo
                 if 'tvg-logo=""' in channel_meta or 'tvg-logo' not in channel_meta:
                     if 'tvg-logo=""' in channel_meta:
                         channel_meta = channel_meta.replace(
@@ -135,7 +136,6 @@ def fetch_and_filter_playlist():
     verified_others = []
 
     with ThreadPoolExecutor(max_workers=20) as executor:
-
         bd_results = executor.map(check_live_stream, raw_bd_india_channels)
         other_results = executor.map(check_live_stream, raw_other_channels)
 
@@ -152,8 +152,10 @@ def fetch_and_filter_playlist():
     dhaka_tz = pytz.timezone("Asia/Dhaka")
     current_time = datetime.now(dhaka_tz).strftime("%I:%M %p | %d-%b-%Y")
 
-    # কাস্টম হেডার ডিজাইন
-        header_content = f"""#EXTM3U
+    total_channels = len(final_playlist)
+
+    # HEADER (FIXED INDENTATION)
+    header_content = f"""#EXTM3U
 # 📡 IPTV STREAM HUB
 # 
 # 👨‍💻 Dev : KB CYBER TEAM  
@@ -172,12 +174,12 @@ def fetch_and_filter_playlist():
 """
 
     with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
-        f.write(header)
+        f.write(header_content + "\n")
 
         for info, link in final_playlist:
             f.write(f"{info}\n{link}\n")
 
-    print(f"Done! Total channels: {len(final_playlist)}")
+    print(f"Done! Total channels: {total_channels}")
 
 
 if __name__ == "__main__":
