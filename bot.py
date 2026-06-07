@@ -2,148 +2,285 @@ import os
 from datetime import datetime
 import pytz
 import requests
-import re
 from concurrent.futures import ThreadPoolExecutor
 
-# GitHub Secret থেকে সোর্স লিংক নেওয়া হচ্ছে
-SOURCE_URL = os.getenv("KBPROTV")
+# Multiple Sources
+SOURCE_URLS = [
+    os.getenv("KBPROTV"),
+    os.getenv("KBPROTV2"),
+]
+
 OUTPUT_FILE = "kbtvpro.m3u8"
 
-# কোনো চ্যানেলে লোগো না থাকলে এই ডিফল্ট লোগোটি বসে যাবে
+# Default Logo
 DEFAULT_LOGO = "https://raw.githubusercontent.com/Mrbotrx/bdxi_tv/main/assets/default_tv.png"
 
 
 def check_live_stream(channel):
-    """লিঙ্কটি সচল এবং ফাস্ট কাজ করছে কিনা তা পরীক্ষা করার ফাংশন"""
+    """Check if stream is alive"""
     info, link = channel
+
     try:
-        # stream চেক করার জন্য ৩ সেকেন্ড টাইমআউট (Fast Link Filter)
-        response = requests.head(link, timeout=3.0, allow_redirects=True)
+        response = requests.head(
+            link,
+            timeout=3.0,
+            allow_redirects=True
+        )
+
         if response.status_code == 200:
             return info, link
+
     except requests.RequestException:
         try:
-            # HEAD রিকোয়েস্ট ব্লক হলে GET রিকোয়েস্ট দিয়ে শেষবারের মতো চেক করা
-            response = requests.get(link, timeout=3.0, stream=True)
+            response = requests.get(
+                link,
+                timeout=3.0,
+                stream=True
+            )
+
             if response.status_code == 200:
                 return info, link
+
         except requests.RequestException:
             pass
+
     return None
 
 
 def fetch_and_filter_playlist():
-    if not SOURCE_URL:
-        print("Error: Source URL not found in Environment Variables!")
+
+    all_lines = []
+
+    # Fetch all source playlists
+    for source_url in SOURCE_URLS:
+
+        if not source_url:
+            continue
+
+        try:
+            print(f"Loading source: {source_url}")
+
+            response = requests.get(
+                source_url,
+                timeout=15
+            )
+
+            if response.status_code == 200:
+                all_lines.extend(response.text.splitlines())
+                print("Source loaded successfully")
+            else:
+                print(f"Failed to load source: {response.status_code}")
+
+        except Exception as e:
+            print(f"Source Error: {e}")
+
+    if not all_lines:
+        print("No playlist data found!")
         return
 
-    try:
-        response = requests.get(SOURCE_URL, timeout=15)
-        if response.status_code != 200:
-            print("Failed to fetch source playlist.")
-            return
+    raw_bd_india_channels = []
+    raw_other_channels = []
 
-        lines = response.text.splitlines()
-        
-        raw_bd_india_channels = []
-        raw_other_channels = []
-        current_info = None
+    current_info = None
 
-        for line in lines:
-            line = line.strip()
-            if not line:
+    # Duplicate link remover
+    seen_links = set()
+
+    for line in all_lines:
+
+        line = line.strip()
+
+        if not line:
+            continue
+
+        if line.startswith("#EXTINF:"):
+            current_info = line
+
+        elif line.startswith("http") or line.startswith("rtmp"):
+
+            if line in seen_links:
+                current_info = None
                 continue
 
-            if line.startswith("#EXTINF:"):
-                current_info = line
-            elif line.startswith("http") or line.startswith("rtmp"):
-                is_mp4 = ".mp4" in line.lower()
-                is_promo = (
-                    "promo" in line.lower()
-                    or (current_info and "promo" in current_info.lower())
+            seen_links.add(line)
+
+            is_mp4 = ".mp4" in line.lower()
+
+            is_promo = (
+                "promo" in line.lower()
+                or (
+                    current_info
+                    and "promo" in current_info.lower()
                 )
-                is_m3u8 = ".m3u8" in line.lower() or "live" in line.lower()
+            )
 
-                if is_m3u8 and not is_mp4 and not is_promo:
-                    channel_meta = current_info if current_info else '#EXTINF:-1 tvg-id="" tvg-name="Channel" tvg-logo="",Live Channel'
-                    
-                    # লোগো চেক এবং ডিফল্ট লোগো অ্যাসাইন করার লজিক
-                    # যদি tvg-logo ফাকা থাকে বা না থাকে, তবে DEFAULT_LOGO বসবে
-                    if 'tvg-logo=""' in channel_meta or 'tvg-logo' not in channel_meta:
-                        if 'tvg-logo' in channel_meta:
-                            channel_meta = channel_meta.replace('tvg-logo=""', f'tvg-logo="{DEFAULT_LOGO}"')
-                        else:
-                            # যদি tvg-logo ট্যাগটাই না থাকে, তবে অ্যাড করে দেওয়া হচ্ছে
-                            channel_meta = channel_meta.replace('#EXTINF:-1', f'#EXTINF:-1 tvg-logo="{DEFAULT_LOGO}"')
+            is_m3u8 = (
+                ".m3u8" in line.lower()
+                or "live" in line.lower()
+            )
 
-                    meta_lower = channel_meta.lower()
-                    is_bd_or_in = any(
-                        keyword in meta_lower for keyword in [
-                            'bd', 'bangla', 'bangladesh', 'india', 'ind ', 'zee', 'star', 'sony', 'colors'
-                        ]
+            if is_m3u8 and not is_mp4 and not is_promo:
+
+                channel_meta = (
+                    current_info
+                    if current_info
+                    else '#EXTINF:-1 tvg-id="" tvg-name="Channel" tvg-logo="",Live Channel'
+                )
+
+                # Add default logo if missing
+                if (
+                    'tvg-logo=""' in channel_meta
+                    or 'tvg-logo' not in channel_meta
+                ):
+
+                    if 'tvg-logo=""' in channel_meta:
+
+                        channel_meta = channel_meta.replace(
+                            'tvg-logo=""',
+                            f'tvg-logo="{DEFAULT_LOGO}"'
+                        )
+
+                    else:
+
+                        channel_meta = channel_meta.replace(
+                            "#EXTINF:-1",
+                            f'#EXTINF:-1 tvg-logo="{DEFAULT_LOGO}"'
+                        )
+
+                meta_lower = channel_meta.lower()
+
+                PRIORITY_KEYWORDS = [
+    # Bangladesh
+    "bd",
+    "bangla",
+    "bangladesh",
+
+    # India Entertainment
+    "india",
+    "ind ",
+    "zee",
+    "star",
+    "sony",
+    "colors",
+
+    # Sports Channels
+    "sports",
+    "sport",
+    "cricket",
+    "football",
+    "soccer",
+    "t sports",
+    "tsports",
+    "ten sports",
+    "ptv sports",
+    "star sports",
+    "sony sports",
+    "sky sports",
+    "fox sports",
+    "espn",
+    "eurosport",
+    "supersport",
+    "bein sports",
+    "bein",
+    "willow",
+    "astro cricket",
+    "astro supersport",
+    "premier sports",
+    "arena sport"
+]
+
+is_bd_or_in = any(
+    keyword in meta_lower
+    for keyword in PRIORITY_KEYWORDS
+)
+
+                if is_bd_or_in:
+                    raw_bd_india_channels.append(
+                        (channel_meta, line)
+                    )
+                else:
+                    raw_other_channels.append(
+                        (channel_meta, line)
                     )
 
-                    if is_bd_or_in:
-                        raw_bd_india_channels.append((channel_meta, line))
-                    else:
-                        raw_other_channels.append((channel_meta, line))
+            current_info = None
 
-                current_info = None
+    print("Verifying links...")
 
-        # থ্রেড পুল ব্যবহার করে দ্রুত লিঙ্ক ভ্যালিডেশন
-        print("Verifying link status, speed, and ensuring logos...")
-        verified_bd_in = []
-        verified_others = []
+    verified_bd_in = []
+    verified_others = []
 
-        with ThreadPoolExecutor(max_workers=20) as executor:
-            bd_in_results = executor.map(check_live_stream, raw_bd_india_channels)
-            other_results = executor.map(check_live_stream, raw_other_channels)
+    with ThreadPoolExecutor(max_workers=20) as executor:
 
-        for res in bd_in_results:
-            if res: verified_bd_in.append(res)
-            
-        for res in other_results:
-            if res: verified_others.append(res)
-
-        # ফাইনাল সচল প্লেলিস্ট (BD & IN সবার উপরে)
-        final_playlist = verified_bd_in + verified_others
-        total_channels = len(final_playlist)
-
-        # বাংলাদেশ সময় ফরম্যাট
-        dhaka_tz = pytz.timezone("Asia/Dhaka")
-        current_time = (
-            datetime.now(dhaka_tz).strftime("%I:%M %p | %d-%b-%Y") + " (BST)"
+        bd_results = executor.map(
+            check_live_stream,
+            raw_bd_india_channels
         )
 
-        # কাস্টম হেডার ডিজাইন
-        header_content = f"""#EXTM3U
+        other_results = executor.map(
+            check_live_stream,
+            raw_other_channels
+        )
+
+        for res in bd_results:
+            if res:
+                verified_bd_in.append(res)
+
+        for res in other_results:
+            if res:
+                verified_others.append(res)
+
+    final_playlist = (
+        verified_bd_in +
+        verified_others
+    )
+
+    total_channels = len(final_playlist)
+
+    dhaka_tz = pytz.timezone(
+        "Asia/Dhaka"
+    )
+
+    current_time = (
+        datetime.now(dhaka_tz).strftime(
+            "%I:%M %p | %d-%b-%Y"
+        )
+        + " (BST)"
+    )
+
+    header_content = f"""#EXTM3U
 # 📡 IPTV STREAM HUB
-# 
-# 👨‍💻 Dev : KB CYBER TEAM  
-# 🌐 Panel : https://kbtvpro.totalh.net/  
-# 💻 GitHub : https://github.com/Mrbotrx  
-# 📢 Telegram : https://t.me/KBCYBERTEAM  
-# 
-# 📺 Channels : {total_channels} CHANNELS ONLINE (LOGO & SPEED VERIFIED)
-# • https://t.me/iptvlinksm3u8  
-# • https://t.me/KBCYBERTEAM  
-# 
-# 🕒 Time : {current_time}  
-# 🔄 Status : LIVE / UPDATED  
-# 
-# 📬 @KBCYBERTEAM 
+#
+# 👨‍💻 Dev : KB CYBER TEAM
+# 🌐 Panel : https://kbtvpro.totalh.net/
+# 💻 GitHub : https://github.com/Mrbotrx
+# 📢 Telegram : https://t.me/KBCYBERTEAM
+#
+# 📺 Channels : {total_channels} CHANNELS ONLINE
+# 🔄 Multi Source Enabled
+#
+# 🕒 Time : {current_time}
+# ✅ Status : LIVE / UPDATED
+#
+# 📬 @KBCYBERTEAM
+
 """
 
-        # ফাইল রাইট করা
-        with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
-            f.write(header_content)
-            for info, link in final_playlist:
-                f.write(f"{info}\n{link}\n")
+    with open(
+        OUTPUT_FILE,
+        "w",
+        encoding="utf-8"
+    ) as f:
 
-        print(f"Playlist updated. Total channels with verification & logos: {total_channels}")
+        f.write(header_content)
 
-    except Exception as e:
-        print(f"Error: {e}")
+        for info, link in final_playlist:
+            f.write(f"{info}\n{link}\n")
+
+    print(
+        f"Playlist updated successfully! "
+        f"Total channels: {total_channels}"
+    )
 
 
 if __name__ == "__main__":
