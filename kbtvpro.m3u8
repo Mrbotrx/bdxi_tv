@@ -7,11 +7,11 @@
 # 💻 GitHub    : https://github.com/Mrbotrx
 # 📢 Telegram  : https://t.me/KBCYBERTEAM
 ############################################
-# 📺 Total Channels : 262
+# 📺 Total Channels : 265
 # 🔥 Status          : LIVE / AUTO VERIFIED
 # 🧪 Engine          : LINK CHECKER ACTIVE
 ############################################
-# 🕒 Updated Time : 02:37 PM | 07-Jun-2026
+# 🕒 Updated Time : 05:11 PM | 07-Jun-2026
 # 📍 Region       : Bangladesh / India / Global
 ############################################
 # 🚀 Powered by KB CYBER TEAM
@@ -46,6 +46,8 @@ https://tvsen7.aynaott.com/foxsports2/index.m3u8?e=1779283790&amp;u=78be6644-0a6
 https://tvsen7.aynaott.com/sspts1/tracks-v1a1/mono.ts.m3u8
 #EXTINF:-1 tvg-logo="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRPCvTmUhiKDs4ehoVpFLh7xwdCNK2-N_gNFqnaOM4YRQ&s=10"group-title="Live Sports" group-title="",Live Sports
 http://27.124.71.27/Willow_Extra/index.m3u8
+#EXTINF:-1 tvg-logo="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRPCvTmUhiKDs4ehoVpFLh7xwdCNK2-N_gNFqnaOM4YRQ&s=10"group-title="Live Sports" group-title="",Live Sports
+https://stream.snexus.co/live/SHARQ_GAME_TV/main_stream.m3u8
 #EXTINF:-1 tvg-logo="https://raw.githubusercontent.com/subirkumarpaul/Logo/main/ATN%20Bangla.png"group-title="Bangla" group-title="",ATN Bangla UK
 https://app.ncare.live/c3VydmVyX8RpbEU9Mi8xNy8yMDE0GIDU6RgzQ6NTAgdEoaeFzbF92YWxIZTO0U0ezN1IzMyfvcGVMZEJCTEFWeVN3PTOmdFsaWRtaW51aiPhnPTI2/atnbanglauk-off.stream/playlist.m3u8
 #EXTINF:-1 tvg-logo="https://raw.githubusercontent.com/subirkumarpaul/Logo/main/NTV.png"group-title="Bangla" group-title="",NTV UK
@@ -84,6 +86,10 @@ https://cdn-4.pishow.tv/live/1231/1231_1.m3u8
 https://cdn-4.pishow.tv/live/969/master.m3u8
 #EXTINF:-1 tvg-logo="https://raw.githubusercontent.com/Mrbotrx/bdxi_tv/main/assets/default_tv.png" group-title="Kolkata Bangla Movies",Bangla Movies
 https://live-stream.utkalbongo.com/hls/livebanglatvstream.m3u8
+#EXTINF:-1 tvg-logo="https://raw.githubusercontent.com/Mrbotrx/bdxi_tv/main/assets/default_tv.png"group-title="Kolkata Bangla Movies" group-title="",ZB Cinema
+https://server.zillarbarta.com/ZBCINEMA/tracks-v1a1/mono.ts.m3u8
+#EXTINF:-1 tvg-logo="https://raw.githubusercontent.com/Mrbotrx/bdxi_tv/main/assets/default_tv.png" group-title="Kolkata Bangla Music",Dhoom Music
+http://103.175.73.12:8080/live/378/378_0.m3u8
 #EXTINF:-1 tvg-logo="https://raw.githubusercontent.com/Mrbotrx/bdxi_tv/main/assets/default_tv.png" group-title="Indian Bangla News" tvg-logo="https://i.postimg.cc/t7Gn9VtZ/abpananda.png",ABP Ananda
 https://amg01448-samsungin-abpananda-samsungin-ad-pw.amagi.tv/playlist/amg01448-samsungin-abpananda-samsungin/playlist.m3u8
 #EXTINF:-1 tvg-logo="https://raw.githubusercontent.com/Mrbotrx/bdxi_tv/main/assets/default_tv.png" group-title="Indian Bangla News" tvg-logo="https://www.lyngsat.com/logo/tv/ss/sun-bangla-in.png",Zee 24 Ghanta
@@ -194,8 +200,6 @@ https://tvsen1.aynaott.com/Ravc7gPCZpxk/tracks-v1a1/mono.ts.m3u8
 https://owrcovcrpy.gpcdn.net/bpk-tv/1701/output/1701-audio_113312_eng=113200-video=1692000.m3u8
 #EXTINF:-1 tvg-logo="https://raw.githubusercontent.com/Mrbotrx/bdxi_tv/main/assets/default_tv.png" group-title="Live Tv",INDEPENDENT
 https://owrcovcrpy.gpcdn.net/bpk-tv/1728/output/1728-audio_113582_eng=113200-video=3224800.m3u8
-#EXTINF:-1 tvg-logo="https://raw.githubusercontent.com/Mrbotrx/bdxi_tv/main/assets/default_tv.png" group-title="Live Tv",Durronto TV
-https://app24.jagobd.com.bd/c3VydmVyX8RpbEU9Mi8xNy8yMFDEEHGcfRgzQ6NTAgdEoaeFzbF92YWxIZTO0U0ezN1IzMyfvcEdsEfeDeKiNkVN3PTOmdFseWRtaW51aiPhnPTI2/duronto.stream/tracks-v1a1/mono.m3u8
 #EXTINF:-1 tvg-logo="https://raw.githubusercontent.com/Mrbotrx/bdxi_tv/main/assets/default_tv.png" group-title="Live Tv",Channel I
 https://nomawnoijl.gpcdn.net/akash/originals/chunks.m3u8
 #EXTINF:-1 tvg-logo="https://raw.githubusercontent.com/Mrbotrx/bdxi_tv/main/assets/default_tv.png" group-title="Live Tv",Channel 9
@@ -270,16 +274,12 @@ https://shd-gcp-live.edgenextcdn.net/live/bitmovin-saudi-tv/2ad66056b51fd8c1b624
 https://live.kwikmotion.com/sharjahtvquranlive/shqurantv.smil/playlist.m3u8
 #EXTINF:-1 tvg-logo="https://raw.githubusercontent.com/Mrbotrx/bdxi_tv/main/assets/default_tv.png" group-title="Cricket 🏏" tvg-logo=" ",WAZ TV 🎯 📡
 https://tplay.live/originals/ilm-tv/index.m3u8
-#EXTINF:-1 tvg-logo="https://raw.githubusercontent.com/Mrbotrx/bdxi_tv/main/assets/default_tv.png" group-title="Cricket 🏏" tvg-logo="https://i.ibb.co.com/4mjS8hB/download-1.png", স্পাইস FM Radio 📻 মোবাইল লক করা অবস্থায়ও চলতে থাকবে
-https://stream.spicefmbd.com/stream.m3u8
 #EXTINF:-1 tvg-logo="https://raw.githubusercontent.com/Mrbotrx/bdxi_tv/main/assets/default_tv.png" group-title="Cricket 🏏" tvg-logo=" ", Somoy 🇧🇩 FIFA World Cup 2026
 https://owrcovcrpy.gpcdn.net/bpk-tv/1702/output/1702-audio_113322_eng=113200-video=2202800.m3u8
 #EXTINF:-1 tvg-logo="https://raw.githubusercontent.com/Mrbotrx/bdxi_tv/main/assets/default_tv.png" group-title="Cricket 🏏" tvg-logo=" ", Coze TV FIFA World Cup 2026 🇧🇷
 https://dfr80qz435crc.cloudfront.net/MNOP/Amagi/Caze/Caze_TV_BR/1080p-vtt/index.m3u8
 #EXTINF:-1 tvg-logo="https://raw.githubusercontent.com/Mrbotrx/bdxi_tv/main/assets/default_tv.png" group-title="Cricket 🏏" tvg-logo=" ", Unite 8 Sports 🇮🇳 HD FIFA World Cup 2026
 http://66.102.126.10:8000/play/a022/index.m3u8
-#EXTINF:-1 tvg-logo="https://raw.githubusercontent.com/Mrbotrx/bdxi_tv/main/assets/default_tv.png" group-title="Cricket 🏏" tvg-logo=" ", Unite 2 Sports 🇮🇳 HD FIFA World Cup 2026
-http://103.204.43.87:8080/live/1/1/264.m3u8
 #EXTINF:-1 tvg-logo="https://raw.githubusercontent.com/Mrbotrx/bdxi_tv/main/assets/default_tv.png" group-title="Cricket 🏏" tvg-logo=" ",Willow HD 🇺🇸
 https://tvsen5.aynaott.com/willowhd/index.m3u8
 #EXTINF:-1 tvg-logo="https://raw.githubusercontent.com/Mrbotrx/bdxi_tv/main/assets/default_tv.png" group-title="Cricket 🏏" tvg-logo=" ",A Sports HD 🇵🇰
@@ -288,6 +288,14 @@ https://tvsen6.aynaott.com/asports/tracks-v1a1/mono.ts.m3u8
 https://tvsen5.aynaott.com/PtvSports/tracks-v1a1/mono.ts.m3u8
 #EXTINF:-1 tvg-logo="https://raw.githubusercontent.com/Mrbotrx/bdxi_tv/main/assets/default_tv.png" group-title="Cricket 🏏",PTV Sports pk HD
 https://crichd.johirxofficial.workers.dev/live/ptvpk.m3u8
+#EXTINF:-1 tvg-logo="https://raw.githubusercontent.com/Mrbotrx/bdxi_tv/main/assets/default_tv.png" group-title="Cricket 🏏" tvg-logo=" ",Sony Sports 1 HD 🇮🇳
+https://ottbanglaplatform.com/tv/toffee/live.php?id=sony_sports_1_hd&e=.m3u8
+#EXTINF:-1 tvg-logo="https://raw.githubusercontent.com/Mrbotrx/bdxi_tv/main/assets/default_tv.png" group-title="Cricket 🏏" tvg-logo=" ",Sony Sports 2 HD 🇮🇳
+https://ottbanglaplatform.com/tv/toffee/live.php?id=sony_sports_2_hd&e=.m3u8
+#EXTINF:-1 tvg-logo="https://raw.githubusercontent.com/Mrbotrx/bdxi_tv/main/assets/default_tv.png" group-title="Cricket 🏏" tvg-logo=" ",Sony Sports 5 HD 🇮🇳
+https://ottbanglaplatform.com/tv/toffee/live.php?id=sony_sports_5_hd&e=.m3u8
+#EXTINF:-1 tvg-logo="https://raw.githubusercontent.com/Mrbotrx/bdxi_tv/main/assets/default_tv.png" group-title="Cricket 🏏" tvg-logo=" ",EuroSports HD 🇮🇳
+https://ottbanglaplatform.com/tv/toffee/live.php?id=euro_sports_hd&e=.m3u8
 #EXTINF:-1 tvg-logo="https://raw.githubusercontent.com/Mrbotrx/bdxi_tv/main/assets/default_tv.png" group-title="Cricket 🏏" tvg-logo=" ",DD SPORTS
 https://d3qs3d2rkhfqrt.cloudfront.net/out/v1/b17adfe543354fdd8d189b110617cddd/index_3.m3u8
 #EXTINF:-1 tvg-logo="https://raw.githubusercontent.com/Mrbotrx/bdxi_tv/main/assets/default_tv.png" group-title="Cricket 🏏", Redbull TV
@@ -376,8 +384,6 @@ https://dwamdstream102.akamaized.net/hls/live/2015525/dwstream102/stream02/strea
 https://ndtv24x7elemarchana.akamaized.net/hls/live/2003678-b/ndtv24x7/master.m3u8
 #EXTINF:-1 tvg-logo="https://raw.githubusercontent.com/Mrbotrx/bdxi_tv/main/assets/default_tv.png" group-title="NEWS INTERNASIONAL", T Global News (Canada)
 https://live.corusdigitaldev.com/groupd/live/49a91e7f-1023-430f-8d66-561055f3d0f7/live.isml/master.m3u8
-#EXTINF:-1 tvg-logo="https://raw.githubusercontent.com/Mrbotrx/bdxi_tv/main/assets/default_tv.png" group-title="NEWS INTERNASIONAL" tvg-logo="https://i.imgur.com/wgIUsFu.png",BBC News
-https://ythls.armelin.one/channel/UCelk6aHijZq-GJBBB9YpReA.m3u8?v=1
 #EXTINF:-1 tvg-logo="https://raw.githubusercontent.com/Mrbotrx/bdxi_tv/main/assets/default_tv.png" group-title="NEWS INTERNASIONAL" tvg-logo="https://i.imgur.com/A1xzjOI.png",DW English
 https://dwamdstream102.akamaized.net/hls/live/2015525/dwstream102/index.m3u8?v=1
 #EXTINF:-1 tvg-logo="https://raw.githubusercontent.com/Mrbotrx/bdxi_tv/main/assets/default_tv.png" group-title="NEWS INTERNASIONAL",Iran International(EN) 🛜
