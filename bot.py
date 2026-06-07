@@ -152,11 +152,23 @@ def fetch_and_filter_playlist():
     dhaka_tz = pytz.timezone("Asia/Dhaka")
     current_time = datetime.now(dhaka_tz).strftime("%I:%M %p | %d-%b-%Y")
 
-    header = f"""#EXTM3U
-# IPTV STREAM HUB
-# Channels: {len(final_playlist)}
-# Time: {current_time} (BST)
-
+    # কাস্টম হেডার ডিজাইন
+        header_content = f"""#EXTM3U
+# 📡 IPTV STREAM HUB
+# 
+# 👨‍💻 Dev : KB CYBER TEAM  
+# 🌐 Panel : https://kbtvpro.totalh.net/  
+# 💻 GitHub : https://github.com/Mrbotrx  
+# 📢 Telegram : https://t.me/KBCYBERTEAM  
+# 
+# 📺 Channels : {total_channels} CHANNELS ONLINE (LOGO & SPEED VERIFIED)
+# • https://t.me/iptvlinksm3u8  
+# • https://t.me/KBCYBERTEAM  
+# 
+# 🕒 Time : {current_time}  
+# 🔄 Status : LIVE / UPDATED  
+# 
+# 📬 @KBCYBERTEAM 
 """
 
     with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
