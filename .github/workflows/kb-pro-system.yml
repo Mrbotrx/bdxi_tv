@@ -1,4 +1,4 @@
-name: KB Pro ROARZONE
+name: KB BOT PRO ROARZONET
 
 on:
   schedule:
@@ -20,9 +20,9 @@ jobs:
       - name: Install requests
         run: pip install requests
 
-      - - name: Run script
-  run: python newtest.py
-  env:
+      - name: Run script
+        run: python newtest.py
+        env:
           BOT_NAME: ${{ secrets.BOT_NAME }}
           BASE_API: ${{ secrets.BASE_API }}
 
