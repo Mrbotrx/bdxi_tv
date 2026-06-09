@@ -26,10 +26,24 @@ jobs:
           BOT_NAME: ${{ secrets.BOT_NAME }}
           BASE_API: ${{ secrets.BASE_API }}
 
-      - name: Commit file
+      - name: Debug output (optional but useful)
+        run: |
+          echo "Listing files after script run:"
+          ls -la
+
+      - name: Commit file safely
         run: |
           git config user.name "github-actions"
-          git config user.email "actions@github.com"
-          git add ROARZONET.m3u8
-          git commit -m "auto update" || echo "no change"
-          git push
+          git config user.email "github-actions@users.noreply.github.com"
+
+          # Prevent crash if file doesn't exist
+          if [ -f ROARZONET.m3u8 ]; then
+            git add ROARZONET.m3u8
+
+            # Only commit if there are changes
+            git commit -m "auto update ROARZONET.m3u8" || echo "No changes to commit"
+
+            git push
+          else
+            echo "ROARZONET.m3u8 not found — skipping commit"
+          fi
