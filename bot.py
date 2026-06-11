@@ -8,6 +8,7 @@ from concurrent.futures import ThreadPoolExecutor
 SOURCE_URLS = [
     os.getenv("KBPROTV"),
     os.getenv("KBPROTV2"),
+    os.getenv("ABCD")
 ]
 
 OUTPUT_FILE = "kbtvpro.m3u8"
