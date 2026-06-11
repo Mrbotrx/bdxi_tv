@@ -2,7 +2,7 @@ name: KBprotv IPTV BOT
 
 on:
   schedule:
-    - cron: "0,35 * * * *"
+    - cron: "0 * * * *"
   workflow_dispatch:
 
 jobs:
@@ -27,6 +27,7 @@ jobs:
         env:
           KBPROTV: ${{ secrets.KBPROTV }}
           KBPROTV2: ${{ secrets.KBPROTV2 }}
+          ABCD: ${{ secrets.ABCD }}
         run: python bot.py
 
       - name: Commit and Push Changes
