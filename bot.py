@@ -4,7 +4,7 @@ import pytz
 import requests
 from concurrent.futures import ThreadPoolExecutor
 
-# Sources (GitHub Secrets)
+# ================= SOURCES =================
 SOURCE_URLS = [
     os.getenv("KBPROTV"),
     os.getenv("KBPROTV2"),
@@ -16,7 +16,7 @@ OUTPUT_FILE = "kbtvpro.m3u8"
 DEFAULT_LOGO = "https://raw.githubusercontent.com/Mrbotrx/bdxi_tv/main/assets/default_tv.png"
 
 
-# ⚡ FAST STREAM CHECK (optimized, safe)
+# ================= FAST LIVE CHECK =================
 def check_live_stream(channel):
     info, link = channel
 
@@ -24,9 +24,13 @@ def check_live_stream(channel):
         return None
 
     try:
-        r = requests.get(link, timeout=2, stream=True)
+        r = requests.get(
+            link,
+            timeout=2,
+            stream=True,
+            headers={"User-Agent": "Mozilla/5.0"}
+        )
 
-        # only valid live response
         if r.status_code == 200:
             return info, link
 
@@ -36,11 +40,12 @@ def check_live_stream(channel):
     return None
 
 
+# ================= MAIN FUNCTION =================
 def fetch_and_filter_playlist():
 
     all_lines = []
 
-    # Load sources
+    # -------- Load Sources --------
     for url in SOURCE_URLS:
         if not url:
             continue
@@ -59,20 +64,55 @@ def fetch_and_filter_playlist():
         print("No data found")
         return
 
-    raw_priority = []
-    raw_other = []
     seen_links = set()
     current_info = None
+    raw_priority = []
 
-    # PRIORITY KEYWORDS (UNCHANGED)
-    PRIORITY_KEYWORDS = [
-        "bd","bangla","bangladesh","india","zee","star","sony","colors",
-        "sports","cricket","football","soccer",
-        "tsports","ten sports","ptv sports",
-        "espn","bein","sky sports","willow","fox sports"
+    # ================= FILTER KEYWORDS =================
+    KEYWORDS = [
+
+        # ---------- Bangladesh ----------
+        "bd", "bangla", "bangladesh",
+        "channel i", "ntv", "rtv",
+        "ekattor", "independent",
+        "somoy", "jamuna", "gtv",
+        "gazi tv", "banglavision",
+        "boishakhi", "desh tv", "mohona",
+
+        # ---------- India ----------
+        "india", "zee", "star", "sony", "colors",
+        "star plus", "star gold",
+        "zee cinema", "zee bangla",
+        "sony max", "sony sab", "sony tv",
+        "star jalsha", "colors bangla",
+        "sun tv", "asianet", "gemini",
+
+        # ---------- Sports + FIFA ----------
+        "sport", "sports",
+        "cricket", "football", "soccer",
+        "fifa", "uefa", "afc",
+        "champions league", "europa league",
+        "premier league", "laliga",
+        "serie a", "bundesliga",
+
+        "tsports", "t sports",
+        "ten sports",
+        "ptv sports",
+        "star sports",
+        "sony sports",
+        "espn",
+        "fox sports",
+        "sky sports",
+        "bein sports",
+        "bein",
+        "willow",
+        "supersport",
+        "eurosport"
     ]
 
+    # ================= PARSE M3U =================
     for line in all_lines:
+
         line = line.strip()
         if not line:
             continue
@@ -81,6 +121,7 @@ def fetch_and_filter_playlist():
             current_info = line
 
         elif line.startswith("http"):
+
             link = line
 
             # duplicate skip
@@ -90,56 +131,54 @@ def fetch_and_filter_playlist():
 
             seen_links.add(link)
 
-            # ❌ MP4 fully ignored
+            # skip mp4
             if ".mp4" in link.lower():
                 current_info = None
                 continue
 
-            # ❌ promo skip
+            # skip promo
             if current_info and "promo" in current_info.lower():
                 current_info = None
                 continue
 
-            # ⚡ FAST LIVE FILTER (important optimization)
-            if ".m3u8" not in link and "live" not in link:
+            # FAST FILTER (keep same logic)
+            if ".m3u8" not in link.lower() and "live" not in link.lower():
                 current_info = None
                 continue
 
             meta = current_info if current_info else "#EXTINF:-1,Live TV"
 
-            # logo fix (UNCHANGED)
+            # add logo if missing
             if "tvg-logo" not in meta:
                 meta = meta.replace(
                     "#EXTINF:-1",
                     f'#EXTINF:-1 tvg-logo="{DEFAULT_LOGO}"'
                 )
 
-            # priority split (UNCHANGED logic)
-            if any(k in meta.lower() for k in PRIORITY_KEYWORDS):
+            # only allowed channels
+            if any(k in meta.lower() for k in KEYWORDS):
                 raw_priority.append((meta, link))
-            else:
-                raw_other.append((meta, link))
 
             current_info = None
 
-    print("Checking LIVE streams (FAST MODE)...")
+    print("Checking LIVE streams...")
 
+    # ================= LIVE CHECK (FAST THREADING) =================
     final = []
 
-    # ⚡ FAST THREAD POOL
     with ThreadPoolExecutor(max_workers=60) as ex:
-        for result in ex.map(check_live_stream, raw_priority + raw_other):
+        for result in ex.map(check_live_stream, raw_priority):
             if result:
                 final.append(result)
 
-    # timezone
+    # ================= TIME =================
     dhaka = pytz.timezone("Asia/Dhaka")
     now = datetime.now(dhaka).strftime("%I:%M %p | %d-%b-%Y")
 
-    # HEADER (UNCHANGED EXACT AS ORIGINAL STYLE)
-    header_content = f"""#EXTM3U
+    # ================= HEADER =================
+    header = f"""#EXTM3U
 ############################################
-#            📡 IPTV STREAM HUB           #
+#            📡 IPTV STREAM HUB
 ############################################
 # 👨‍💻 Dev      : KB CYBER TEAM
 # 🌐 Panel     : https://kbtvpro.totalh.net/
@@ -147,19 +186,17 @@ def fetch_and_filter_playlist():
 # 📢 Telegram  : https://t.me/KBCYBERTEAM
 ############################################
 # 📺 Total Channels : {len(final)}
-# 🔥 Status          : LIVE / AUTO VERIFIED
-# 🧪 Engine          : FAST LINK FILTER
+# 🔥 Status          : LIVE / FILTERED
+# 🧪 Engine          : BD + INDIA + SPORTS ONLY
 ############################################
 # 🕒 Updated Time : {now}
-# 📍 Region       : Bangladesh / India / Global
-############################################
-# 🚀 Powered by KB CYBER TEAM
+# 📍 Region       : Bangladesh / India / Sports
 ############################################
 """
 
-    # write file
+    # ================= WRITE FILE =================
     with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
-        f.write(header_content + "\n")
+        f.write(header + "\n")
 
         for info, link in final:
             f.write(f"{info}\n{link}\n")
