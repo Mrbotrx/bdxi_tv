@@ -30,11 +30,21 @@ def find_m3u8(obj):
     return None
 
 
+def get_category(ch):
+    genres = ch.get("genre") or []
+
+    if isinstance(genres, list) and genres:
+        return genres[0]
+
+    return "General"
+
+
 def extract_channels(data):
     channels = []
 
     def walk(obj):
         if isinstance(obj, dict):
+
             if "contentList" in obj and isinstance(obj["contentList"], list):
                 channels.extend(obj["contentList"])
 
@@ -52,6 +62,8 @@ def extract_channels(data):
 async def fetch(session, sem, ch):
     pid = ch.get("providerContentId")
     name = ch.get("channelName") or ch.get("title") or "Unknown"
+    logo = ch.get("logo") or ""
+    category = get_category(ch)
 
     if not pid:
         return None
@@ -61,19 +73,27 @@ async def fetch(session, sem, ch):
             async with session.get(DETAIL_API.format(pid), timeout=20) as r:
                 data = await r.json(content_type=None)
 
-        m3u8 = find_m3u8(data)
+        stream = find_m3u8(data)
 
-        if not m3u8:
+        if not stream:
             return None
 
-        return f'#EXTINF:-1 tvg-id="{pid}",{name}\n{m3u8}\n'
+        return {
+            "name": name,
+            "url": stream,
+            "logo": logo,
+            "category": category,
+            "id": pid
+        }
 
     except:
         return None
 
 
 async def main():
+
     async with aiohttp.ClientSession(headers=HEADERS) as session:
+
         async with session.get(LIVE_API) as r:
             data = await r.json(content_type=None)
 
@@ -84,14 +104,32 @@ async def main():
         tasks = [fetch(session, sem, ch) for ch in channels]
         results = await asyncio.gather(*tasks)
 
-        with open("akashdth.m3u", "w", encoding="utf-8") as f:
-            f.write("#EXTM3U\n")
+        seen = set()
+        lines = ["#EXTM3U\n"]
 
-            count = 0
-            for i in results:
-                if i:
-                    f.write(i)
-                    count += 1
+        count = 0
+
+        for ch in results:
+            if not ch:
+                continue
+
+            if ch["id"] in seen:
+                continue
+
+            seen.add(ch["id"])
+
+            lines.append(
+                f'#EXTINF:-1 tvg-id="{ch["id"]}" '
+                f'tvg-logo="{ch["logo"]}" '
+                f'group-title="{ch["category"]}",{ch["name"]}\n'
+            )
+
+            lines.append(ch["url"] + "\n")
+
+            count += 1
+
+        with open("akashdth.m3u", "w", encoding="utf-8") as f:
+            f.writelines(lines)
 
         print(f"Saved {count} channels")
 
