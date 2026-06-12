@@ -1,9 +1,11 @@
+import os
 import asyncio
 import aiohttp
 from datetime import datetime
 
-LIVE_API = "https://kong.akash-go.com/search-connector/pub/freemium/search/livedata"
-DETAIL_API = "https://kong.akash-go.com/content-detail/pub/api/v6/channels/{}"
+# 🔐 from GitHub Secrets
+LIVE_API = os.getenv("LIVE_API")
+DETAIL_API = os.getenv("DETAIL_API")
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0",
@@ -11,7 +13,7 @@ HEADERS = {
 }
 
 
-# ---------- FIND M3U8 ----------
+# ---------- M3U8 FIND ----------
 def find_m3u8(obj):
     if isinstance(obj, dict):
         for v in obj.values():
@@ -32,15 +34,7 @@ def find_m3u8(obj):
     return None
 
 
-# ---------- CATEGORY ----------
-def get_category(ch):
-    genres = ch.get("genre") or []
-    if isinstance(genres, list) and genres:
-        return genres[0]
-    return "General"
-
-
-# ---------- EXTRACT CHANNELS ----------
+# ---------- CHANNEL EXTRACT ----------
 def extract_channels(data):
     channels = []
 
@@ -61,7 +55,7 @@ def extract_channels(data):
 
 
 # ---------- HEADER ----------
-def generate_header(total):
+def header(total):
     now = datetime.now().strftime("%I:%M %p | %d-%b-%Y")
 
     return f"""#EXTM3U
@@ -69,7 +63,6 @@ def generate_header(total):
 #            📡 IPTV × KB
 ############################################
 # 👨‍💻 Dev      : KB CYBER TEAM
-# 🌐 Panel     : https://kbtvpro.totalh.net/
 # 💻 GitHub    : https://github.com/Mrbotrx
 # 📢 Telegram  : https://t.me/KBCYBERTEAM
 ############################################
@@ -83,12 +76,14 @@ def generate_header(total):
 """
 
 
-# ---------- FETCH SINGLE CHANNEL ----------
+# ---------- FETCH ----------
 async def fetch(session, sem, ch):
     pid = ch.get("providerContentId")
     name = ch.get("channelName") or ch.get("title") or "Unknown"
     logo = ch.get("logo") or ""
-    category = get_category(ch)
+    genre = ch.get("genre") or []
+
+    category = genre[0] if isinstance(genre, list) and genre else "General"
 
     if not pid:
         return None
@@ -130,36 +125,32 @@ async def main():
         tasks = [fetch(session, sem, ch) for ch in channels]
         results = await asyncio.gather(*tasks)
 
+        valid = [x for x in results if x]
         seen = set()
-        final_lines = []
 
-        valid_channels = [x for x in results if x]
-        total = len(valid_channels)
+        lines = []
 
-        # HEADER
-        final_lines.append(generate_header(total))
+        lines.append(header(len(valid)))
 
-        # CHANNELS
-        for ch in valid_channels:
+        for ch in valid:
 
             if ch["id"] in seen:
                 continue
 
             seen.add(ch["id"])
 
-            final_lines.append(
+            lines.append(
                 f'#EXTINF:-1 tvg-id="{ch["id"]}" '
                 f'tvg-logo="{ch["logo"]}" '
                 f'group-title="{ch["category"]}",{ch["name"]}\n'
             )
 
-            final_lines.append(ch["url"] + "\n")
+            lines.append(ch["url"] + "\n")
 
-        # SAVE FILE
         with open("akashdth.m3u", "w", encoding="utf-8") as f:
-            f.writelines(final_lines)
+            f.writelines(lines)
 
-        print(f"Saved {total} channels")
+        print(f"Saved {len(valid)} channels")
 
 
 if __name__ == "__main__":
