@@ -3,9 +3,7 @@ import asyncio
 import aiohttp
 from datetime import datetime
 
-# 🔐 from GitHub Secrets
 LIVE_API = os.getenv("LIVE_API")
-DETAIL_API = os.getenv("DETAIL_API")
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0",
@@ -13,28 +11,7 @@ HEADERS = {
 }
 
 
-# ---------- M3U8 FIND ----------
-def find_m3u8(obj):
-    if isinstance(obj, dict):
-        for v in obj.values():
-            r = find_m3u8(v)
-            if r:
-                return r
-
-    elif isinstance(obj, list):
-        for i in obj:
-            r = find_m3u8(i)
-            if r:
-                return r
-
-    elif isinstance(obj, str):
-        if ".m3u8" in obj.lower():
-            return obj
-
-    return None
-
-
-# ---------- CHANNEL EXTRACT ----------
+# ---------- EXTRACT CHANNELS ----------
 def extract_channels(data):
     channels = []
 
@@ -54,23 +31,36 @@ def extract_channels(data):
     return channels
 
 
+# ---------- GET CATEGORY ----------
+def get_category(ch):
+    g = ch.get("genre")
+    if isinstance(g, list) and g:
+        return g[0]
+    return "General"
+
+
+# ---------- GET STREAM ----------
+def get_stream(ch):
+    # priority order
+    return (
+        ch.get("protectedHlsConsumerUrl")
+        or ch.get("nonProtectedHlsConsumerUrl")
+        or ch.get("protectedDashWidevineConsumerUrl")
+    )
+
+
 # ---------- HEADER ----------
-def header(total):
+def make_header(total):
     now = datetime.now().strftime("%I:%M %p | %d-%b-%Y")
 
     return f"""#EXTM3U
 ############################################
-#            📡 IPTV × KB
-############################################
-# 👨‍💻 Dev      : KB CYBER TEAM
-# 💻 GitHub    : https://github.com/Mrbotrx
-# 📢 Telegram  : https://t.me/KBCYBERTEAM
+#        📡 BDXI ALL CHANNELS
 ############################################
 # 📺 Total Channels : {total}
-# 🔥 Status          : LIVE / FILTERED
-# 🧪 Engine          : BD + INDIA + SPORTS
+# 🔥 Status : ALL INCLUSIVE (DRM + NON-DRM)
 ############################################
-# 🕒 Updated Time : {now}
+# 🕒 Updated : {now}
 ############################################
 
 """
@@ -78,36 +68,23 @@ def header(total):
 
 # ---------- FETCH ----------
 async def fetch(session, sem, ch):
+
     pid = ch.get("providerContentId")
     name = ch.get("channelName") or ch.get("title") or "Unknown"
     logo = ch.get("logo") or ""
-    genre = ch.get("genre") or []
+    category = get_category(ch)
+    stream = get_stream(ch)
 
-    category = genre[0] if isinstance(genre, list) and genre else "General"
-
-    if not pid:
+    if not pid or not stream:
         return None
 
-    try:
-        async with sem:
-            async with session.get(DETAIL_API.format(pid), timeout=20) as r:
-                data = await r.json(content_type=None)
-
-        stream = find_m3u8(data)
-
-        if not stream:
-            return None
-
-        return {
-            "id": pid,
-            "name": name,
-            "logo": logo,
-            "category": category,
-            "url": stream
-        }
-
-    except:
-        return None
+    return {
+        "id": pid,
+        "name": name,
+        "logo": logo,
+        "category": category,
+        "url": stream
+    }
 
 
 # ---------- MAIN ----------
@@ -120,7 +97,7 @@ async def main():
 
         channels = extract_channels(data)
 
-        sem = asyncio.Semaphore(80)
+        sem = asyncio.Semaphore(120)
 
         tasks = [fetch(session, sem, ch) for ch in channels]
         results = await asyncio.gather(*tasks)
@@ -128,9 +105,7 @@ async def main():
         valid = [x for x in results if x]
         seen = set()
 
-        lines = []
-
-        lines.append(header(len(valid)))
+        lines = [make_header(len(valid))]
 
         for ch in valid:
 
@@ -150,7 +125,7 @@ async def main():
         with open("akashdth.m3u", "w", encoding="utf-8") as f:
             f.writelines(lines)
 
-        print(f"Saved {len(valid)} channels")
+        print(f"Saved {len(valid)} total channels")
 
 
 if __name__ == "__main__":
