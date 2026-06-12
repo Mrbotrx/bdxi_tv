@@ -42,94 +42,58 @@ def extract_channels(data):
                 walk(v)
 
         elif isinstance(obj, list):
-            for item in obj:
-                walk(item)
+            for i in obj:
+                walk(i)
 
     walk(data)
     return channels
 
 
-async def fetch_channel(session, ch, sem):
+async def fetch(session, sem, ch):
     pid = ch.get("providerContentId")
+    name = ch.get("channelName") or ch.get("title") or "Unknown"
 
     if not pid:
         return None
 
-    name = ch.get("channelName") or ch.get("title") or f"CH-{pid}"
-
     try:
         async with sem:
-            async with session.get(
-                DETAIL_API.format(pid),
-                timeout=15
-            ) as r:
+            async with session.get(DETAIL_API.format(pid), timeout=20) as r:
+                data = await r.json(content_type=None)
 
-                detail = await r.json(
-                    content_type=None
-                )
-
-        m3u8 = find_m3u8(detail)
+        m3u8 = find_m3u8(data)
 
         if not m3u8:
             return None
 
-        return (
-            f'#EXTINF:-1 tvg-id="{pid}" '
-            f'tvg-name="{name}",{name}\n'
-            f'{m3u8}\n'
-        )
+        return f'#EXTINF:-1 tvg-id="{pid}",{name}\n{m3u8}\n'
 
-    except Exception:
+    except:
         return None
 
 
 async def main():
-
-    connector = aiohttp.TCPConnector(
-        limit=200,
-        ssl=False
-    )
-
-    async with aiohttp.ClientSession(
-        headers=HEADERS,
-        connector=connector
-    ) as session:
-
+    async with aiohttp.ClientSession(headers=HEADERS) as session:
         async with session.get(LIVE_API) as r:
             data = await r.json(content_type=None)
 
         channels = extract_channels(data)
 
-        print(f"Found {len(channels)} channels")
+        sem = asyncio.Semaphore(80)
 
-        sem = asyncio.Semaphore(100)
-
-        tasks = [
-            fetch_channel(session, ch, sem)
-            for ch in channels
-        ]
-
+        tasks = [fetch(session, sem, ch) for ch in channels]
         results = await asyncio.gather(*tasks)
 
-        with open(
-            "akashdth.m3u",
-            "w",
-            encoding="utf-8"
-        ) as f:
-
+        with open("akashdth.m3u", "w", encoding="utf-8") as f:
             f.write("#EXTM3U\n")
 
-            for item in results:
-                if item:
-                    f.write(item)
+            count = 0
+            for i in results:
+                if i:
+                    f.write(i)
+                    count += 1
 
-        total = sum(
-            1 for x in results if x
-        )
-
-        print(
-            f"Saved {total} channels -> akashdth.m3u"
-        )
+        print(f"Saved {count} channels")
 
 
 if __name__ == "__main__":
