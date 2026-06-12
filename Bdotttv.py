@@ -3,7 +3,6 @@ import asyncio
 import aiohttp
 from datetime import datetime
 
-# 🔐 API from GitHub Secrets
 LIVE_API = os.getenv("LIVE_API")
 DETAIL_API = os.getenv("DETAIL_API")
 
@@ -13,7 +12,7 @@ HEADERS = {
 }
 
 
-# ---------- EXTRACT CHANNELS ----------
+# ---------- EXTRACT ----------
 def extract_channels(data):
     channels = []
 
@@ -33,25 +32,12 @@ def extract_channels(data):
     return channels
 
 
-# ---------- STREAM FIND ----------
-def find_stream(obj):
-    if isinstance(obj, dict):
-        for v in obj.values():
-            r = find_stream(v)
-            if r:
-                return r
-
-    elif isinstance(obj, list):
-        for i in obj:
-            r = find_stream(i)
-            if r:
-                return r
-
-    elif isinstance(obj, str):
-        if ".m3u8" in obj.lower() or ".mpd" in obj.lower():
-            return obj
-
-    return None
+# ---------- STREAMS ----------
+def get_streams(ch):
+    return [
+        ch.get("protectedHlsConsumerUrl"),
+        ch.get("protectedDashWidevineConsumerUrl")
+    ]
 
 
 # ---------- CATEGORY ----------
@@ -63,15 +49,15 @@ def get_category(ch):
 
 
 # ---------- HEADER ----------
-def make_header(total):
+def header(total):
     now = datetime.now().strftime("%I:%M %p | %d-%b-%Y")
 
     return f"""#EXTM3U
 ############################################
-#        📡 BDXI DUAL API IPTV
+#        📡 BDXI SMART FALLBACK IPTV
 ############################################
 # 📺 Total Channels : {total}
-# 🔥 Engine : LIVE + DETAIL API
+# 🔥 Engine : HLS + DASH fallback
 ############################################
 # 🕒 Updated : {now}
 ############################################
@@ -79,8 +65,8 @@ def make_header(total):
 """
 
 
-# ---------- FETCH DETAIL API ----------
-async def fetch_detail(session, sem, ch):
+# ---------- FETCH ----------
+async def fetch(session, sem, ch):
 
     pid = ch.get("providerContentId")
     name = ch.get("channelName") or ch.get("title") or "Unknown"
@@ -90,26 +76,18 @@ async def fetch_detail(session, sem, ch):
     if not pid:
         return None
 
-    try:
-        async with sem:
-            async with session.get(DETAIL_API.format(pid), timeout=20) as r:
-                data = await r.json(content_type=None)
+    streams = [s for s in get_streams(ch) if s]
 
-        stream = find_stream(data)
-
-        if not stream:
-            return None
-
-        return {
-            "id": pid,
-            "name": name,
-            "logo": logo,
-            "category": category,
-            "url": stream
-        }
-
-    except:
+    if not streams:
         return None
+
+    return {
+        "id": pid,
+        "name": name,
+        "logo": logo,
+        "category": category,
+        "streams": streams
+    }
 
 
 # ---------- MAIN ----------
@@ -117,25 +95,21 @@ async def main():
 
     async with aiohttp.ClientSession(headers=HEADERS) as session:
 
-        # API 1
         async with session.get(LIVE_API) as r:
             data = await r.json(content_type=None)
 
         channels = extract_channels(data)
 
-        print(f"Found {len(channels)} channels")
+        sem = asyncio.Semaphore(100)
 
-        sem = asyncio.Semaphore(80)
-
-        tasks = [fetch_detail(session, sem, ch) for ch in channels]
+        tasks = [fetch(session, sem, ch) for ch in channels]
         results = await asyncio.gather(*tasks)
 
         valid = [x for x in results if x]
         seen = set()
 
-        lines = [make_header(len(valid))]
+        lines = [header(len(valid))]
 
-        # API 2 results → M3U
         for ch in valid:
 
             if ch["id"] in seen:
@@ -143,18 +117,23 @@ async def main():
 
             seen.add(ch["id"])
 
+            streams = ch["streams"]
+
+            # M3U EXTINF
             lines.append(
                 f'#EXTINF:-1 tvg-id="{ch["id"]}" '
                 f'tvg-logo="{ch["logo"]}" '
                 f'group-title="{ch["category"]}",{ch["name"]}\n'
             )
 
-            lines.append(ch["url"] + "\n")
+            # PRIMARY + BACKUP STREAMS
+            for s in streams:
+                lines.append(s + "\n")
 
         with open("akashdth.m3u", "w", encoding="utf-8") as f:
             f.writelines(lines)
 
-        print(f"Saved {len(valid)} channels")
+        print(f"Saved {len(valid)} channels with fallback streams")
 
 
 if __name__ == "__main__":
