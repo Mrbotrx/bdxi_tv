@@ -1,3 +1,4 @@
+
 import os
 import asyncio
 import aiohttp
@@ -32,27 +33,42 @@ def extract_channels(data):
     return channels
 
 
-# ---------- EXTRACT ALL STREAMS ----------
-def extract_streams(ch):
-    hls = ch.get("protectedHlsConsumerUrl")
-    dash = ch.get("protectedDashWidevineConsumerUrl")
+# ---------- FIND ALL LINKS ----------
+def extract_links(obj):
+    m3u8 = []
+    mpd = []
+    license_links = []
 
-    streams = []
+    def walk(x):
+        if isinstance(x, dict):
+            for k, v in x.items():
 
-    if hls:
-        streams.append(hls)
+                lk = k.lower()
 
-    if dash:
-        streams.append(dash)
+                if isinstance(v, str):
 
-    return streams
+                    if ".m3u8" in v.lower():
+                        m3u8.append(v)
 
+                    elif ".mpd" in v.lower():
+                        mpd.append(v)
 
-# ---------- EXTRACT LICENSE ----------
-def extract_license(ch):
+                    elif "license" in lk:
+                        license_links.append(v)
+
+                else:
+                    walk(v)
+
+        elif isinstance(x, list):
+            for i in x:
+                walk(i)
+
+    walk(obj)
+
     return {
-        "widevine": ch.get("dashWidevineLicenseUrl"),
-        "fairplay": ch.get("fairplayLicenseUrl")
+        "m3u8": list(set(m3u8)),
+        "mpd": list(set(mpd)),
+        "license": list(set(license_links))
     }
 
 
@@ -70,10 +86,10 @@ def header(total):
 
     return f"""#EXTM3U
 ############################################
-#        📡 STREAM + LICENSE EXTRACTOR
+#        📡 BDXI FULL STREAM EXTRACTOR
 ############################################
 # 📺 Total Channels : {total}
-# 🔥 Mode : FULL (M3U8 + MPD + LICENSE)
+# 🔥 Mode : ALL STREAMS + LICENSE
 ############################################
 # 🕒 Updated : {now}
 ############################################
@@ -81,7 +97,7 @@ def header(total):
 """
 
 
-# ---------- FETCH ----------
+# ---------- FETCH DETAIL ----------
 async def fetch(session, sem, ch):
 
     pid = ch.get("providerContentId")
@@ -89,20 +105,31 @@ async def fetch(session, sem, ch):
     logo = ch.get("logo") or ""
     category = get_category(ch)
 
-    streams = extract_streams(ch)
-    license_data = extract_license(ch)
-
-    if not pid or not streams:
+    if not pid:
         return None
 
-    return {
-        "id": pid,
-        "name": name,
-        "logo": logo,
-        "category": category,
-        "streams": streams,
-        "license": license_data
-    }
+    try:
+        async with sem:
+            async with session.get(DETAIL_API.format(pid), timeout=20) as r:
+                data = await r.json(content_type=None)
+
+        links = extract_links(data)
+
+        if not links["m3u8"] and not links["mpd"]:
+            return None
+
+        return {
+            "id": pid,
+            "name": name,
+            "logo": logo,
+            "category": category,
+            "m3u8": links["m3u8"],
+            "mpd": links["mpd"],
+            "license": links["license"]
+        }
+
+    except:
+        return None
 
 
 # ---------- MAIN ----------
@@ -139,26 +166,22 @@ async def main():
                 f'group-title="{ch["category"]}",{ch["name"]}\n'
             )
 
-            # STREAM LINKS (M3U8 + MPD)
-            for s in ch["streams"]:
-                lines.append(f"# STREAM: {s}\n")
-                lines.append(s + "\n")
+            # M3U8 LINKS
+            for u in ch["m3u8"]:
+                lines.append(u + "\n")
 
-            # LICENSE LINKS (JUST OUTPUT INFO)
-            lic = ch["license"]
+            # MPD LINKS
+            for u in ch["mpd"]:
+                lines.append(u + "\n")
 
-            if lic.get("widevine"):
-                lines.append(f"# WIDEVINE: {lic['widevine']}\n")
-
-            if lic.get("fairplay"):
-                lines.append(f"# FAIRPLAY: {lic['fairplay']}\n")
-
-            lines.append("\n")
+            # LICENSE LINKS (metadata only)
+            for u in ch["license"]:
+                lines.append("# License: " + u + "\n")
 
         with open("akashdth.m3u", "w", encoding="utf-8") as f:
             f.writelines(lines)
 
-        print(f"Saved {len(valid)} channels (streams + license info)")
+        print(f"Saved {len(valid)} channels with full streams")
 
 
 if __name__ == "__main__":
