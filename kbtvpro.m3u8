@@ -7,18 +7,16 @@
 # 💻 GitHub    : https://github.com/Mrbotrx
 # 📢 Telegram  : https://t.me/KBCYBERTEAM
 ############################################
-# 📺 Total Channels : 60
+# 📺 Total Channels : 62
 # 🔥 Status          : LIVE / FILTERED
 # 🧪 Engine          : BD + INDIA + SPORTS ONLY
 ############################################
-# 🕒 Updated Time : 11:15 PM | 13-Jun-2026
+# 🕒 Updated Time : 01:14 AM | 14-Jun-2026
 # 📍 Region       : Bangladesh / India / Sports
 ############################################
 
 #EXTINF:-1 tvg-logo="https://carboncredits.com/wp-content/uploads/2025/09/shutterstock_2306088965-e1757112807302.jpg"group-title="Football World Cup 2026" group-title="",Football World Cup 2026
 http://114.130.57.224:8080/Somoy-TV-3Mb/tracks-v1a1/mono.m3u8?token=SkQuhAXZxgBan1
-#EXTINF:-1 tvg-logo="https://raw.githubusercontent.com/subirkumarpaul/Logo/main/ATN%20Bangla.png"group-title="Bangla" group-title="",ATN Bangla UK
-https://app.ncare.live/c3VydmVyX8RpbEU9Mi8xNy8yMDE0GIDU6RgzQ6NTAgdEoaeFzbF92YWxIZTO0U0ezN1IzMyfvcGVMZEJCTEFWeVN3PTOmdFsaWRtaW51aiPhnPTI2/atnbanglauk-off.stream/playlist.m3u8
 #EXTINF:-1 tvg-logo="https://raw.githubusercontent.com/subirkumarpaul/Logo/main/NTV.png"group-title="Bangla" group-title="",NTV UK
 https://app.ncare.live/c3VydmVyX8RpbEU9Mi8xNy8yMDE0GIDU6RgzQ6NTAgdEoaeFzbF92YWxIZTO0U0ezN1IzMyfvcGVMZEJCTEFWeVN3PTOmdFsaWRtaW51aiPhnPTI2/ntvuk00332211.stream/playlist.m3u8
 #EXTINF:-1 tvg-logo="https://raw.githubusercontent.com/subirkumarpaul/Logo/main/Asian%20Tv.png"group-title="Bangla" group-title="",Asian TV
@@ -35,6 +33,8 @@ https://app24.jagobd.com.bd/c3VydmVyX8RpbEU9Mi8xNy8yMFDEEHGcfRgzQ6NTAgdEoaeFzbF9
 https://tplay.live/originals/bengali-beats/index.m3u8
 #EXTINF:-1 tvg-logo="" group-title="Bangla Music",Channel-16
 https://app24.jagobd.com.bd/c3VydmVyX8RpbEU9Mi8xNy8yMFDEEHGcfRgzQ6NTAgdEoaeFzbF92YWxIZTO0U0ezN1IzMyfvcEdsEfeDeKiNkVN3PTOmdFseWRtaW51aiPhnPTI2/channel16bd.stream/tracks-v1a1/mono.m3u8
+#EXTINF:-1 tvg-logo="https://i.ibb.co/Gfw89mC/20240804-033102.png" group-title="Relagion Channel", Peace TV Bangla
+https://dzkyvlfyge.erbvr.com/PeaceTvBangla/tracks-v2a1/mono.m3u8
 #EXTINF:-1 tvg-logo="" group-title="Bangla Movies",G-Serise
 https://vods2.aynaott.com/gseriesDrama/tracks-v1a1/mono.ts.m3u8
 #EXTINF:-1 tvg-logo="https://raw.githubusercontent.com/subirkumarpaul/Logo/main/Enter%2010%20Bangla.jpeg" group-title="Kolkata Bangla",Enter 10 Bangla
@@ -77,16 +77,12 @@ http://202.70.146.135:8000/play/a05z/index.m3u8
 https://amg01553-blueantmediaasi-zoomoonz-samsungnz-rdufn.amagi.tv/playlist/amg01553-blueantmediaasi-zoomoonz-samsungnz/playlist.m3u8
 #EXTINF:-1 tvg-logo="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSKyMNNb_SRC2dnm7IW84llAJ9aO5Zb7V4jdjHaweOo58tzrc9pSsRv85-TZD1w4L57nc4&usqp=CAU" group-title="Hindi Music",Music India
 http://103.175.73.12:8080/live/158/158_0.m3u8
+#EXTINF:-1 tvg-logo="" group-title="FIFA World Cup 2026" tvg-logo="https://imglink.cc/cdn/RY7jBwPKAr.jpg", D Sports
+https://1nyaler.streamhostingcdn.top/stream/106/index.m3u8
 #EXTINF:-1 tvg-logo="" group-title="FIFA World Cup 2026" tvg-logo="https://shorturl.at/NPoFh", Win Sports 🇧🇷
 https://1nyaler.streamhostingcdn.top/stream/32/index.m3u8
 #EXTINF:-1 tvg-logo="" group-title="FIFA World Cup 2026" tvg-logo="https://shorturl.at/NPoFh",Bein Sports Direct 🇫🇷
 https://1nyaler.streamhostingcdn.top/stream/23/index.m3u8
-#EXTINF:-1 tvg-logo="" group-title="FIFA World Cup 2026" tvg-logo="https://shorturl.at/NPoFh",Bein max2
-http://go8knm.optikl.ink/X/index.php/Besyria1/video.m3u8
-#EXTINF:-1 tvg-logo="" group-title="FIFA World Cup 2026" tvg-logo="https://shorturl.at/NPoFh",Max1
-http://go8knm.optikl.ink/X/index.php/Besyria2/video.m3u8
-#EXTINF:-1 tvg-logo="" group-title="FIFA World Cup 2026" tvg-logo="https://shorturl.at/NPoFh",4k HDR
-http://go8knm.optikl.ink/X/index.php/Besyria3/video.m3u8
 #EXTINF:-1 tvg-logo="" group-title="FIFA World Cup 2026" tvg-logo="https://shorturl.at/NPoFh", TRT Spor ⚽
 https://andro.226503.xyz/checklist/androstreamlivebs1.m3u8
 #EXTINF:-1 tvg-logo="" group-title="Cricket 🏏" tvg-logo=" ", Discovery_Asia HD
@@ -101,8 +97,14 @@ https://tplay.live/originals/ilm-tv/index.m3u8
 https://stream.spicefmbd.com/stream.m3u8
 #EXTINF:-1 tvg-logo="" group-title="Cricket 🏏" tvg-logo=" ", India A vs Afghanistan A Shamshad TV
 https://5a1178b42cc03.streamlock.net/shamshadtelevision/shamshadtelevision/playlist.m3u8
+#EXTINF:-1 tvg-logo="" group-title="Cricket 🏏" tvg-logo=" ",Sony Sports 1 HD 🇮🇳
+https://ottbanglaplatform.com/tv/toffee/live.php?id=sony_sports_1_hd&e=.m3u8
+#EXTINF:-1 tvg-logo="" group-title="Cricket 🏏" tvg-logo=" ",Sony Sports 2 HD 🇮🇳
+https://ottbanglaplatform.com/tv/toffee/live.php?id=sony_sports_2_hd&e=.m3u8
 #EXTINF:-1 tvg-logo="" group-title="Cricket 🏏" tvg-logo=" ",Sony Sports 5 HD 🇮🇳
 https://ottbanglaplatform.com/tv/toffee/live.php?id=sony_sports_5_hd&e=.m3u8
+#EXTINF:-1 tvg-logo="" group-title="Cricket 🏏" tvg-logo=" ",EuroSports HD 🇮🇳
+https://ottbanglaplatform.com/tv/toffee/live.php?id=euro_sports_hd&e=.m3u8
 #EXTINF:-1 tvg-logo="" group-title="Cricket 🏏" tvg-logo=" ",DD SPORTS
 https://d3qs3d2rkhfqrt.cloudfront.net/out/v1/b17adfe543354fdd8d189b110617cddd/index_3.m3u8
 #EXTINF:-1 tvg-logo="" group-title="Cricket 🏏", Redbull TV
@@ -125,6 +127,8 @@ http://istream.binarywaves.com:8081/hls/arabica/playlist.m3u8
 https://bozztv.com/rongo/rongo-DeshTV/tracks-v1a1/mono.m3u8
 #EXTINF:-1 tvg-logo="" group-title="Bangladeshi 🇧🇩" tvg-logo=" ",pcv
 https://padmaonline.duckdns.org:8088/pcv/index.m3u8
+#EXTINF:-1 tvg-logo="" group-title="Bangladeshi 🇧🇩" tvg-logo=" ", 9XM TV
+https://wiselp.wiseplayout.com/9XM/HD1080/HD1080.m3u8
 #EXTINF:-1 tvg-logo="" group-title="Bangladeshi 🇧🇩" tvg-logo=" ", Deepto TV
 https://byphdgllyk.gpcdn.net/hls/deeptotv/0_1/index.m3u8
 #EXTINF:-1 tvg-logo="https://images-na.ssl-images-amazon.com/images/I/71CywdrFaZL.png" group-title="ISLAMIC CHANNELS", Peace tv Bangla
