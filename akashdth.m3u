@@ -5,7 +5,7 @@
 # 📺 Total Channels : 56
 # 🔥 Mode : VLC / IPTV Compatible ONLY
 ############################################
-# 🕒 Updated : 02:02 AM | 15-Jun-2026
+# 🕒 Updated : 08:39 AM | 15-Jun-2026
 ############################################
 
 #EXTINF:-1 tvg-id="309" tvg-logo="https://tstatic.akash-go.com/cms-ui/images/custom-content/1762850019257.png" group-title="Sports",Sony Sports TEN 2
@@ -64,7 +64,7 @@ https://nomawnoijl.gpcdn.net/akash/screem/playlist.m3u8
 https://nomawnoijl.gpcdn.net/akash/flashguys/playlist.m3u8
 #EXTINF:-1 tvg-id="20014" tvg-logo="https://tstatic.akash-go.com/cms-ui/images/custom-content/1770379038530.png" group-title="Kids",BuddyStar HD
 https://nomawnoijl.gpcdn.net/akash/buddystar/playlist.m3u8
-#EXTINF:-1 tvg-id="20011" tvg-logo="https://tstatic.akash-go.com/cms-ui/images/custom-content/1770378560772.png" group-title="Infotainment",Luxel HD
+#EXTINF:-1 tvg-id="20011" tvg-logo="https://tstatic.akash-go.com/cms-ui/images/custom-content/1770378560772.png" group-title="Infotainment",Luxell HD
 https://nomawnoijl.gpcdn.net/akash/luxell/playlist.m3u8
 #EXTINF:-1 tvg-id="20013" tvg-logo="https://tstatic.akash-go.com/cms-ui/images/custom-content/1770378874717.png" group-title="Kids",Joy
 https://nomawnoijl.gpcdn.net/akash/joy/playlist.m3u8
