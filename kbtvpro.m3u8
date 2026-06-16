@@ -7,11 +7,11 @@
 # 💻 GitHub    : https://github.com/Mrbotrx
 # 📢 Telegram  : https://t.me/KBCYBERTEAM
 ############################################
-# 📺 Total Channels : 64
+# 📺 Total Channels : 65
 # 🔥 Status          : LIVE / FILTERED
 # 🧪 Engine          : BD + INDIA + SPORTS ONLY
 ############################################
-# 🕒 Updated Time : 02:57 AM | 17-Jun-2026
+# 🕒 Updated Time : 04:52 AM | 17-Jun-2026
 # 📍 Region       : Bangladesh / India / Sports
 ############################################
 
@@ -77,6 +77,8 @@ http://202.70.146.135:8000/play/a05z/index.m3u8
 https://amg01553-blueantmediaasi-zoomoonz-samsungnz-rdufn.amagi.tv/playlist/amg01553-blueantmediaasi-zoomoonz-samsungnz/playlist.m3u8
 #EXTINF:-1 tvg-logo="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSKyMNNb_SRC2dnm7IW84llAJ9aO5Zb7V4jdjHaweOo58tzrc9pSsRv85-TZD1w4L57nc4&usqp=CAU" group-title="Hindi Music",Music India
 http://103.175.73.12:8080/live/158/158_0.m3u8
+#EXTINF:-1 tvg-logo="" group-title="Live Tv",FIFA WORLD CUP LIVE-1
+http://84.17.50.102/fox/index.m3u8
 #EXTINF:-1 tvg-logo="" group-title="FIFA World Cup 2026"tvg-logo="https://imglink.cc/cdn/RY7jBwPKAr.jpg", Zee Bangla Sunar
 https://d1g8wgjurz8via.cloudfront.net/bpk-tv/ColorsHD/default/master2.m3u8
 #EXTINF:-1 tvg-logo="" group-title="FIFA World Cup 2026"tvg-logo="https://imglink.cc/cdn/RY7jBwPKAr.jpg", TPV Sport
