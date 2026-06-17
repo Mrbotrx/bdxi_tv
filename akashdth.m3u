@@ -2,10 +2,10 @@
 ############################################
 #        📡 VLC IPTV CLEAN PLAYLIST
 ############################################
-# 📺 Total Channels : 56
+# 📺 Total Channels : 55
 # 🔥 Mode : VLC / IPTV Compatible ONLY
 ############################################
-# 🕒 Updated : 12:01 AM | 17-Jun-2026
+# 🕒 Updated : 05:28 AM | 17-Jun-2026
 ############################################
 
 #EXTINF:-1 tvg-id="309" tvg-logo="https://tstatic.akash-go.com/cms-ui/images/custom-content/1762850019257.png" group-title="Sports",Sony Sports TEN 2
@@ -112,8 +112,6 @@ https://nomawnoijl.gpcdn.net/akash/delicious/playlist.m3u8
 https://owrcovcrpy.gpcdn.net/bpk-tv/1720/output/index.m3u8
 #EXTINF:-1 tvg-id="10013" tvg-logo="https://tstatic.akash-go.com/cms-ui/images/custom-content/1779610478709.png" group-title="Sports",Sports Range
 https://nomawnoijl.gpcdn.net/akash/sportrange/playlist.m3u8
-#EXTINF:-1 tvg-id="10014" tvg-logo="https://tstatic.akash-go.com/cms-ui/images/custom-content/1780554094519.png" group-title="Sports",AKASH GO Sports 1
-https://owrcovcrpy.gpcdn.net/bpk-tv/1724/output/index.m3u8
 #EXTINF:-1 tvg-id="20031" tvg-logo="https://tstatic.akash-go.com/cms-ui/images/custom-content/1780310920616.png" group-title="Movies",Sony Max
 https://owrcovcrpy.gpcdn.net/bpk-tv/1730/output/index.m3u8
 #EXTINF:-1 tvg-id="20032" tvg-logo="https://tstatic.akash-go.com/cms-ui/images/custom-content/1780311807965.png" group-title="Movies",Sony Pix
