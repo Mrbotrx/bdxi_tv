@@ -37,11 +37,13 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
           
+          # Force add the file
           git add -f akashdth.m3u
           
+          # Commit if there are changes
           if git diff --staged --quiet; then
-            echo "ℹ️ No changes detected"
-            git commit --allow-empty -m "🔄 Trigger update [skip ci]"
+            echo "ℹ️ No changes detected in akashdth.m3u"
+            git commit --allow-empty -m "🔄 Trigger workflow update [skip ci]"
           else
             echo "✅ Changes detected, committing..."
             git commit -m "🔄 Auto update IPTV playlist [skip ci]"
@@ -49,12 +51,15 @@ jobs:
           
           git push
 
-      - name: Verify file
+      - name: Display file info
         run: |
           if [ -f "akashdth.m3u" ]; then
-            echo "✅ akashdth.m3u created"
+            echo "✅ akashdth.m3u created successfully"
+            echo "📄 File size: $(wc -c < akashdth.m3u) bytes"
             echo "📄 Lines: $(wc -l < akashdth.m3u)"
-            echo "📄 Size: $(wc -c < akashdth.m3u) bytes"
+            echo ""
+            echo "📋 First 10 lines:"
+            head -n 10 akashdth.m3u
           else
             echo "❌ akashdth.m3u NOT found!"
             exit 1
