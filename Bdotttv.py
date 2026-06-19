@@ -80,10 +80,96 @@ def make_header(total):
 
 # ---------- FETCH ----------
 async def fetch(session, sem, ch):
-
     pid = ch.get("providerContentId")
     name = ch.get("channelName") or ch.get("title") or "Unknown"
     logo = ch.get("logo") or ""
     category = get_category(ch)
 
-    if 
+    # Get stream from detail API
+    async with sem:
+        try:
+            url = f"{DETAIL_API}?providerContentId={pid}"
+            async with session.get(url, headers=HEADERS) as resp:
+                if resp.status == 200:
+                    data = await resp.json()
+                    streams = get_vlc_streams(data)
+                    if streams:
+                        return {
+                            "name": name,
+                            "logo": logo,
+                            "category": category,
+                            "streams": streams
+                        }
+        except Exception as e:
+            print(f"Error fetching {name}: {e}")
+    return None
+
+
+# ---------- GENERATE M3U ----------
+def generate_m3u(channels_data):
+    if not channels_data:
+        return ""
+
+    m3u = make_header(len(channels_data))
+
+    for ch in channels_data:
+        name = ch["name"]
+        logo = ch["logo"]
+        category = ch["category"]
+        streams = ch["streams"]
+
+        # Use first stream
+        stream_url = streams[0]
+
+        m3u += f'#EXTINF:-1 tvg-logo="{logo}" group-title="{category}",{name}\n'
+        m3u += f"{stream_url}\n\n"
+
+    return m3u
+
+
+# ---------- MAIN ----------
+async def main():
+    if not LIVE_API or not DETAIL_API:
+        print("Missing API keys")
+        return
+
+    async with aiohttp.ClientSession() as session:
+        try:
+            # Fetch live channels
+            async with session.get(LIVE_API, headers=HEADERS) as resp:
+                if resp.status != 200:
+                    print(f"Failed to fetch live: {resp.status}")
+                    return
+                live_data = await resp.json()
+
+            channels = extract_channels(live_data)
+            print(f"Found {len(channels)} channels")
+
+            if not channels:
+                print("No channels found")
+                return
+
+            # Process channels with semaphore
+            sem = asyncio.Semaphore(10)
+            tasks = [fetch(session, sem, ch) for ch in channels]
+            results = await asyncio.gather(*tasks)
+
+            # Filter out None results
+            valid_channels = [r for r in results if r is not None]
+            print(f"Valid channels: {len(valid_channels)}")
+
+            # Generate M3U
+            m3u_content = generate_m3u(valid_channels)
+
+            # Write to file
+            with open("playlist.m3u", "w", encoding="utf-8") as f:
+                f.write(m3u_content)
+
+            print(f"Playlist saved with {len(valid_channels)} channels")
+
+        except Exception as e:
+            print(f"Error: {e}")
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
