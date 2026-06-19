@@ -85,7 +85,9 @@ async def fetch(session, sem, ch):
     logo = ch.get("logo") or ""
     category = get_category(ch)
 
-    # Get stream from detail API
+    if not pid:
+        return None
+
     async with sem:
         try:
             url = f"{DETAIL_API}?providerContentId={pid}"
@@ -162,7 +164,7 @@ async def main():
             m3u_content = generate_m3u(valid_channels)
 
             # Write to file
-            with open("playlist.m3u", "w", encoding="utf-8") as f:
+            with open("akashdth.m3u", "w", encoding="utf-8") as f:
                 f.write(m3u_content)
 
             print(f"Playlist saved with {len(valid_channels)} channels")
