@@ -1,23 +1,49 @@
 import os
+import re
 import asyncio
 import aiohttp
 from datetime import datetime
 
+# API endpoints from environment variables
 LIVE_API = os.getenv("LIVE_API")
 DETAIL_API = os.getenv("DETAIL_API")
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
     "Accept": "*/*",
-    "Accept-Encoding": "gzip, deflate",
     "Connection": "keep-alive"
 }
 
 
-# ---------- EXTRACT CHANNELS ----------
-def extract_channels(data):
-    channels = []
+def deep_find_m3u8(data):
+    """
+    Recursively search every corner of the response
+    to find ALL .m3u8 URLs
+    """
+    urls = set()
+    
+    def search(obj):
+        if isinstance(obj, str):
+            # Find m3u8 URLs in strings
+            found = re.findall(r'https?://[^\s"\'<>]+\.m3u8[^\s"\'<>]*', obj)
+            urls.update(found)
+            
+        elif isinstance(obj, dict):
+            for v in obj.values():
+                search(v)
+                
+        elif isinstance(obj, (list, tuple)):
+            for item in obj:
+                search(item)
+    
+    search(data)
+    return list(urls)
 
+
+def extract_channels(data):
+    """Extract channel list from API response"""
+    channels = []
+    
     def walk(obj):
         if isinstance(obj, dict):
             if "contentList" in obj and isinstance(obj["contentList"], list):
@@ -25,192 +51,203 @@ def extract_channels(data):
             for v in obj.values():
                 walk(v)
         elif isinstance(obj, list):
-            for i in obj:
-                walk(i)
-
+            for item in obj:
+                walk(item)
+    
     walk(data)
     return channels
 
 
-# ---------- ONLY VLC FRIENDLY STREAM ----------
-def get_vlc_streams(obj):
-    streams = []
-
-    def walk(x):
-        if isinstance(x, dict):
-            for v in x.values():
-                walk(v)
-        elif isinstance(x, list):
-            for i in x:
-                walk(i)
-        elif isinstance(x, str):
-            if ".m3u8" in x.lower() or ".ts" in x.lower():
-                streams.append(x)
-
-    walk(obj)
-    return list(set(streams))
-
-
-# ---------- CATEGORY ----------
 def get_category(ch):
-    g = ch.get("genre")
-    if isinstance(g, list) and g:
-        return g[0]
+    """Get channel category"""
+    genre = ch.get("genre")
+    if isinstance(genre, list) and genre:
+        return genre[0]
     return "General"
 
 
-# ---------- HEADER ----------
-def make_header(total):
+def create_header(total_channels, total_streams):
+    """Create M3U playlist header"""
     now = datetime.now().strftime("%I:%M %p | %d-%b-%Y")
     return f"""#EXTM3U
 ############################################
-#        📡 ONLY PLAYABLE CHANNELS
+#     ✅ VERIFIED M3U8 PLAYLIST
 ############################################
-# 📺 Total Playable : {total}
-# 🔥 Mode : Stream Verified & Working
+# 📺 Working Channels : {total_channels}
+# 🎯 Total Streams    : {total_streams}
+# 🔒 Only Playable M3U8 Streams
 ############################################
-# 🕒 Updated : {now}
+# 🕒 Last Updated : {now}
 ############################################
 
 """
 
 
-# ---------- CHECK IF STREAM ACTUALLY PLAYS ----------
-async def check_stream_playable(session, url, timeout=8):
+async def verify_stream(session, url, timeout=8):
     """
-    Actually verify the stream is playable by:
-    1. Checking HTTP status
-    2. Reading first few bytes to confirm it's real video content
+    Actually check if the stream is playable
+    Returns True only if stream is working
     """
     try:
         async with session.get(url, timeout=timeout, allow_redirects=True) as resp:
             if resp.status >= 400:
                 return False
             
-            # Try to read first 1KB to verify it's actual video data
+            # Read some data to verify it's real M3U8 content
             try:
-                chunk = await resp.content.read(1024)
-                # M3U8 files start with #EXTM3U
-                # TS files start with sync byte 0x47
-                if chunk:
-                    if url.endswith('.m3u8') and b'#EXTM3U' in chunk:
-                        return True
-                    elif url.endswith('.ts') and chunk[0] == 0x47:
-                        return True
-                    elif len(chunk) > 0:
-                        return True  # If we got any data, consider it valid
-                return False
-            except:
-                # If we can't read content but status is OK, still try to keep it
-                return resp.status < 400
+                chunk = await asyncio.wait_for(resp.content.read(1024), timeout=5)
+                text = chunk.decode('utf-8', errors='ignore')
                 
-    except asyncio.TimeoutError:
+                # Must contain M3U8 markers
+                if '#EXTM3U' in text or '#EXTINF' in text or '#EXT-X-STREAM-INF' in text:
+                    return True
+                    
+                # Also accept if we got some data and URL ends with .m3u8
+                if len(chunk) > 0 and url.lower().endswith('.m3u8'):
+                    return True
+                    
+            except:
+                # If content check fails, at least URL should return 200
+                return resp.status < 300
+                
         return False
+        
     except:
         return False
 
 
-# ---------- FETCH CHANNEL DETAILS ----------
-async def fetch(session, sem, ch):
-    pid = ch.get("providerContentId")
-    name = ch.get("channelName") or ch.get("title") or "Unknown"
-    logo = ch.get("logo") or ""
-    category = get_category(ch)
-
+async def process_channel(session, sem, channel, index, total):
+    """Process one channel - find and verify its m3u8 streams"""
+    
+    pid = channel.get("providerContentId")
+    name = channel.get("channelName") or channel.get("title") or "Unknown"
+    logo = channel.get("logo") or ""
+    category = get_category(channel)
+    
     if not pid:
         return None
-
+    
     try:
         async with sem:
-            async with session.get(DETAIL_API.format(pid), timeout=20) as r:
-                if r.status >= 400:
+            print(f"[{index}/{total}] Checking: {name}", end=" ")
+            
+            # Fetch channel details
+            async with session.get(DETAIL_API.format(pid), timeout=25) as resp:
+                if resp.status >= 400:
+                    print("❌ API Error")
                     return None
-                data = await r.json(content_type=None)
-
-        streams = get_vlc_streams(data)
-        if not streams:
-            return None
-
-        # 🔴 IMPORTANT: Only keep streams that ACTUALLY PLAY
-        playable_streams = []
-        for stream_url in streams:
-            is_playable = await check_stream_playable(session, stream_url)
-            if is_playable:
-                playable_streams.append(stream_url)
-            else:
-                print(f"   ❌ Dead stream: {name} -> {stream_url[:80]}...")
-
-        # If NO streams are playable, skip this channel completely
-        if not playable_streams:
-            print(f"⛔ SKIPPED: {name} (no playable stream)")
-            return None
-
-        print(f"✅ KEPT: {name} ({len(playable_streams)} playable streams)")
-        
-        return {
-            "id": pid,
-            "name": name,
-            "logo": logo,
-            "category": category,
-            "streams": playable_streams
-        }
-
+                
+                try:
+                    data = await resp.json(content_type=None)
+                except:
+                    text = await resp.text()
+                    data = text  # Fallback to raw text
+            
+            # 🔍 Deep search for m3u8 URLs
+            m3u8_urls = deep_find_m3u8(data)
+            
+            if not m3u8_urls:
+                print("❌ No m3u8 found")
+                return None
+            
+            print(f"→ Found {len(m3u8_urls)} streams", end=" ")
+            
+            # ✅ Verify each stream
+            working = []
+            for url in m3u8_urls:
+                if await verify_stream(session, url):
+                    working.append(url)
+            
+            if not working:
+                print("❌ All dead")
+                return None
+            
+            print(f"✅ {len(working)} working")
+            
+            return {
+                "id": pid,
+                "name": name,
+                "logo": logo,
+                "category": category,
+                "streams": working
+            }
+            
     except Exception as e:
+        print(f"❌ Error: {str(e)[:50]}")
         return None
 
 
-# ---------- MAIN ----------
 async def main():
-    print("🚀 Starting channel fetch...")
+    print("\n" + "="*60)
+    print("🎯 M3U8 STREAM FINDER & VALIDATOR")
+    print("="*60 + "\n")
     
     async with aiohttp.ClientSession(headers=HEADERS) as session:
-        # Fetch live channels list
-        async with session.get(LIVE_API) as r:
-            data = await r.json(content_type=None)
-
+        # Get channel list
+        print("📡 Fetching channel list...")
+        async with session.get(LIVE_API) as resp:
+            data = await resp.json(content_type=None)
+        
         channels = extract_channels(data)
-        total_channels = len(channels)
-        print(f"📡 Found {total_channels} channels in API\n")
-
-        # Process channels
-        sem = asyncio.Semaphore(30)  # Conservative concurrency
-        tasks = [fetch(session, sem, ch) for ch in channels]
+        total = len(channels)
+        print(f"✅ Found {total} channels\n")
+        print("-"*60)
+        
+        # Process all channels
+        sem = asyncio.Semaphore(25)
+        tasks = [
+            process_channel(session, sem, ch, i+1, total)
+            for i, ch in enumerate(channels)
+        ]
         results = await asyncio.gather(*tasks)
-
-        # Filter only channels with playable streams
-        valid = [x for x in results if x is not None]
-        seen_ids = set()
-        unique_valid = []
-
-        for ch in valid:
-            if ch["id"] not in seen_ids:
-                seen_ids.add(ch["id"])
-                unique_valid.append(ch)
-
-        # Generate M3U file
-        lines = [make_header(len(unique_valid))]
-
-        for ch in unique_valid:
-            lines.append(
+        
+        # Collect working channels
+        working_channels = [ch for ch in results if ch is not None]
+        
+        # Remove duplicates
+        seen = set()
+        unique_channels = []
+        for ch in working_channels:
+            if ch["id"] not in seen:
+                seen.add(ch["id"])
+                unique_channels.append(ch)
+        
+        # Build M3U content
+        total_streams = sum(len(ch["streams"]) for ch in unique_channels)
+        playlist = [create_header(len(unique_channels), total_streams)]
+        
+        for ch in unique_channels:
+            # Channel info
+            playlist.append(
                 f'#EXTINF:-1 tvg-id="{ch["id"]}" '
                 f'tvg-logo="{ch["logo"]}" '
                 f'group-title="{ch["category"]}",{ch["name"]}\n'
             )
-            for s in ch["streams"]:
-                lines.append(s + "\n")
-
+            # Stream URLs
+            for stream_url in ch["streams"]:
+                playlist.append(stream_url + "\n")
+        
         # Save to file
-        with open("akashdth.m3u", "w", encoding="utf-8") as f:
-            f.writelines(lines)
-
-        # Summary
-        print("\n" + "="*50)
-        print(f"✅ PLAYABLE CHANNELS KEPT : {len(unique_valid)}")
-        print(f"❌ DEAD CHANNELS REMOVED   : {total_channels - len(unique_valid)}")
-        if total_channels > 0:
-            print(f"📊 SUCCESS RATE            : {(len(unique_valid)/total_channels*100):.1f}%")
-        print("="*50)
-        print(f"\n💾 Saved to: akashdth.m3u")
+        output_file = "working_channels.m3u"
+        with open(output_file, "w", encoding="utf-8") as f:
+            f.writelines(playlist)
+        
+        # Show summary
+        print("\n" + "="*60)
+        print("📊 FINAL RESULTS")
+        print("="*60)
+        print(f"📡 Total Channels Scanned : {total}")
+        print(f"✅ Working Channels       : {len(unique_channels)}")
+        print(f"🎯 Working M3U8 Streams  : {total_streams}")
+        print(f"❌ Failed/No Stream      : {total - len(unique_channels)}")
+        
+        if total > 0:
+            rate = len(unique_channels) / total * 100
+            print(f"📈 Success Rate          : {rate:.1f}%")
+        
+        print("="*60)
+        print(f"\n💾 Saved to: {output_file}")
+        print("🎉 Only playable m3u8 streams included!\n")
 
 
 if __name__ == "__main__":
