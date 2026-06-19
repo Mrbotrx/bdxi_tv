@@ -12,10 +12,8 @@ HEADERS = {
 }
 
 
-# ---------- EXTRACT CHANNELS ----------
 def extract_channels(data):
     channels = []
-
     def walk(obj):
         if isinstance(obj, dict):
             if "contentList" in obj and isinstance(obj["contentList"], list):
@@ -25,15 +23,12 @@ def extract_channels(data):
         elif isinstance(obj, list):
             for i in obj:
                 walk(i)
-
     walk(data)
     return channels
 
 
-# ---------- FIND ALL m3u8 STREAMS ----------
 def get_vlc_streams(obj):
     streams = []
-
     def walk(x):
         if isinstance(x, dict):
             for v in x.values():
@@ -44,39 +39,26 @@ def get_vlc_streams(obj):
         elif isinstance(x, str):
             if ".m3u8" in x.lower():
                 streams.append(x)
-
     walk(obj)
-    return list(set(streams))  # remove duplicates
+    return list(set(streams))
 
 
-# ---------- CATEGORY (optional, kept but not used) ----------
-def get_category(ch):
-    g = ch.get("genre")
-    if isinstance(g, list) and g:
-        return g[0]
-    return "General"
-
-
-# ---------- HEADER (minimal) ----------
-def make_header(total, total_streams):
+def make_header(total_channels, total_streams):
     now = datetime.now().strftime("%I:%M %p | %d-%b-%Y")
     return f"""#EXTM3U
 # Playlist: akashdth
-# Channels: {total}
+# Channels: {total_channels}
 # Streams: {total_streams}
 # Updated: {now}
 
 """
 
 
-# ---------- FETCH CHANNEL DETAILS ----------
 async def fetch(session, sem, ch):
     pid = ch.get("providerContentId")
     name = ch.get("channelName") or ch.get("title") or "Unknown"
-
     if not pid:
         return None
-
     async with sem:
         try:
             url = f"{DETAIL_API}?providerContentId={pid}"
@@ -85,19 +67,16 @@ async def fetch(session, sem, ch):
                     data = await resp.json()
                     streams = get_vlc_streams(data)
                     if streams:
-                        return {
-                            "name": name,
-                            "streams": streams
-                        }
+                        return {"name": name, "streams": streams}
         except Exception as e:
             print(f"Error fetching {name}: {e}")
     return None
 
 
-# ---------- GENERATE M3U (all streams, simple numbering) ----------
 def generate_m3u(channels_data):
     if not channels_data:
-        return ""
+        # ফাইল খালি থাকলেও হেডার দিয়ে তৈরি করি
+        return make_header(0, 0)
 
     total_streams = sum(len(ch["streams"]) for ch in channels_data)
     m3u = make_header(len(channels_data), total_streams)
@@ -105,27 +84,24 @@ def generate_m3u(channels_data):
     for ch in channels_data:
         name = ch["name"]
         streams = ch["streams"]
-
         if len(streams) == 1:
-            m3u += f'#EXTINF:-1,{name}\n'
-            m3u += f'{streams[0]}\n\n'
+            m3u += f'#EXTINF:-1,{name}\n{streams[0]}\n\n'
         else:
-            for idx, stream_url in enumerate(streams, 1):
-                m3u += f'#EXTINF:-1,{name} #{idx}\n'
-                m3u += f'{stream_url}\n\n'
-
+            for idx, url in enumerate(streams, 1):
+                m3u += f'#EXTINF:-1,{name} #{idx}\n{url}\n\n'
     return m3u
 
 
-# ---------- MAIN ----------
 async def main():
+    print("=== Starting IPTV playlist generation ===")
     if not LIVE_API or not DETAIL_API:
-        print("Missing API keys")
+        print("ERROR: Missing API keys")
         return
 
     async with aiohttp.ClientSession() as session:
         try:
-            # Fetch live channels
+            # 1. Fetch live channels
+            print(f"Fetching live channels from {LIVE_API}")
             async with session.get(LIVE_API, headers=HEADERS) as resp:
                 if resp.status != 200:
                     print(f"Failed to fetch live: {resp.status}")
@@ -136,273 +112,32 @@ async def main():
             print(f"Found {len(channels)} channels")
 
             if not channels:
-                print("No channels found")
+                print("No channels found – generating empty playlist")
+                with open("akashdth.m3u", "w", encoding="utf-8") as f:
+                    f.write(generate_m3u([]))
                 return
 
-            # Process channels (limit concurrency)
+            # 2. Fetch details for each channel
             sem = asyncio.Semaphore(10)
             tasks = [fetch(session, sem, ch) for ch in channels]
             results = await asyncio.gather(*tasks)
 
-            # Keep only valid channels
-            valid_channels = [r for r in results if r is not None]
-            print(f"Valid channels: {len(valid_channels)}")
+            valid = [r for r in results if r is not None]
+            print(f"Valid channels with streams: {len(valid)}")
 
-            # Generate M3U
-            m3u_content = generate_m3u(valid_channels)
-
-            # Write to akashdth.m3u
+            # 3. Generate and write file
+            m3u_content = generate_m3u(valid)
             with open("akashdth.m3u", "w", encoding="utf-8") as f:
                 f.write(m3u_content)
 
-            print(f"Playlist saved with {len(valid_channels)} channels")
-            total_streams = sum(len(ch["streams"]) for ch in valid_channels)
-            print(f"Total streams: {total_streams}")
+            total_streams = sum(len(ch["streams"]) for ch in valid)
+            print(f"Written {len(valid)} channels, {total_streams} streams to akashdth.m3u")
 
         except Exception as e:
-            print(f"Error: {e}")
-
-
-if __name__ == "__main__":
-    asyncio.run(main())
-
-# ---------- FETCH ----------
-async def fetch(session, sem, ch):
-    pid = ch.get("providerContentId")
-    name = ch.get("channelName") or ch.get("title") or "Unknown"
-    logo = ch.get("logo") or ""
-    category = get_category(ch)
-
-    if not pid:
-        return None
-
-    async with sem:
-        try:
-            url = f"{DETAIL_API}?providerContentId={pid}"
-            async with session.get(url, headers=HEADERS) as resp:
-                if resp.status == 200:
-                    data = await resp.json()
-                    streams = get_vlc_streams(data)
-                    if streams:
-                        return {
-                            "name": name,
-                            "logo": logo,
-                            "category": category,
-                            "streams": streams  # ALL streams found
-                        }
-        except Exception as e:
-            print(f"Error fetching {name}: {e}")
-    return None
-
-
-# ---------- GENERATE M3U WITH ALL STREAMS ----------
-def generate_m3u(channels_data):
-    if not channels_data:
-        return ""
-
-    m3u = make_header(len(channels_data))
-
-    for ch in channels_data:
-        name = ch["name"]
-        logo = ch["logo"]
-        category = ch["category"]
-        streams = ch["streams"]  # All streams
-
-        # Add each stream with a suffix
-        if len(streams) == 1:
-            # Single stream - normal entry
-            m3u += f'#EXTINF:-1 tvg-logo="{logo}" group-title="{category}",{name}\n'
-            m3u += f"{streams[0]}\n\n"
-        else:
-            # Multiple streams - add each with quality/source indicator
-            for idx, stream_url in enumerate(streams, 1):
-                # Try to extract quality from URL
-                quality = "Unknown"
-                if "480" in stream_url or "360" in stream_url:
-                    quality = "SD"
-                elif "720" in stream_url:
-                    quality = "HD"
-                elif "1080" in stream_url:
-                    quality = "FHD"
-                elif "4k" in stream_url.lower() or "2160" in stream_url:
-                    quality = "4K"
-                
-                # Add stream number or quality to name
-                stream_name = f"{name} [{quality}]" if quality != "Unknown" else f"{name} #{idx}"
-                
-                m3u += f'#EXTINF:-1 tvg-logo="{logo}" group-title="{category}",{stream_name}\n'
-                m3u += f"{stream_url}\n\n"
-
-    return m3u
-
-
-# ---------- MAIN ----------
-async def main():
-    if not LIVE_API or not DETAIL_API:
-        print("Missing API keys")
-        return
-
-    async with aiohttp.ClientSession() as session:
-        try:
-            # Fetch live channels
-            async with session.get(LIVE_API, headers=HEADERS) as resp:
-                if resp.status != 200:
-                    print(f"Failed to fetch live: {resp.status}")
-                    return
-                live_data = await resp.json()
-
-            channels = extract_channels(live_data)
-            print(f"Found {len(channels)} channels")
-
-            if not channels:
-                print("No channels found")
-                return
-
-            # Process channels with semaphore
-            sem = asyncio.Semaphore(10)
-            tasks = [fetch(session, sem, ch) for ch in channels]
-            results = await asyncio.gather(*tasks)
-
-            # Filter out None results
-            valid_channels = [r for r in results if r is not None]
-            print(f"Valid channels: {len(valid_channels)}")
-
-            # Count total streams
-            total_streams = sum(len(ch["streams"]) for ch in valid_channels)
-            print(f"Total streams found: {total_streams}")
-
-            # Generate M3U
-            m3u_content = generate_m3u(valid_channels)
-
-            # Write to file
+            print(f"CRITICAL ERROR: {e}")
+            # তবুও একটি খালি ফাইল তৈরি করি যাতে workflow fail না করে
             with open("akashdth.m3u", "w", encoding="utf-8") as f:
-                f.write(m3u_content)
-
-            print(f"Playlist saved with {len(valid_channels)} channels and {total_streams} streams")
-
-        except Exception as e:
-            print(f"Error: {e}")
-
-
-if __name__ == "__main__":
-    asyncio.run(main())
-
-# ---------- FETCH ----------
-async def fetch(session, sem, ch):
-    pid = ch.get("providerContentId")
-    name = ch.get("channelName") or ch.get("title") or "Unknown"
-    logo = ch.get("logo") or ""
-    category = get_category(ch)
-
-    if not pid:
-        return None
-
-    async with sem:
-        try:
-            url = f"{DETAIL_API}?providerContentId={pid}"
-            async with session.get(url, headers=HEADERS) as resp:
-                if resp.status == 200:
-                    data = await resp.json()
-                    streams = get_vlc_streams(data)
-                    if streams:
-                        return {
-                            "name": name,
-                            "logo": logo,
-                            "category": category,
-                            "streams": streams  # ALL streams found
-                        }
-        except Exception as e:
-            print(f"Error fetching {name}: {e}")
-    return None
-
-
-# ---------- GENERATE M3U WITH ALL STREAMS ----------
-def generate_m3u(channels_data):
-    if not channels_data:
-        return ""
-
-    m3u = make_header(len(channels_data))
-
-    for ch in channels_data:
-        name = ch["name"]
-        logo = ch["logo"]
-        category = ch["category"]
-        streams = ch["streams"]  # All streams
-
-        # Add each stream with a suffix
-        if len(streams) == 1:
-            # Single stream - normal entry
-            m3u += f'#EXTINF:-1 tvg-logo="{logo}" group-title="{category}",{name}\n'
-            m3u += f"{streams[0]}\n\n"
-        else:
-            # Multiple streams - add each with quality/source indicator
-            for idx, stream_url in enumerate(streams, 1):
-                # Try to extract quality from URL
-                quality = "Unknown"
-                if "480" in stream_url or "360" in stream_url:
-                    quality = "SD"
-                elif "720" in stream_url:
-                    quality = "HD"
-                elif "1080" in stream_url:
-                    quality = "FHD"
-                elif "4k" in stream_url.lower() or "2160" in stream_url:
-                    quality = "4K"
-                
-                # Add stream number or quality to name
-                stream_name = f"{name} [{quality}]" if quality != "Unknown" else f"{name} #{idx}"
-                
-                m3u += f'#EXTINF:-1 tvg-logo="{logo}" group-title="{category}",{stream_name}\n'
-                m3u += f"{stream_url}\n\n"
-
-    return m3u
-
-
-# ---------- MAIN ----------
-async def main():
-    if not LIVE_API or not DETAIL_API:
-        print("Missing API keys")
-        return
-
-    async with aiohttp.ClientSession() as session:
-        try:
-            # Fetch live channels
-            async with session.get(LIVE_API, headers=HEADERS) as resp:
-                if resp.status != 200:
-                    print(f"Failed to fetch live: {resp.status}")
-                    return
-                live_data = await resp.json()
-
-            channels = extract_channels(live_data)
-            print(f"Found {len(channels)} channels")
-
-            if not channels:
-                print("No channels found")
-                return
-
-            # Process channels with semaphore
-            sem = asyncio.Semaphore(10)
-            tasks = [fetch(session, sem, ch) for ch in channels]
-            results = await asyncio.gather(*tasks)
-
-            # Filter out None results
-            valid_channels = [r for r in results if r is not None]
-            print(f"Valid channels: {len(valid_channels)}")
-
-            # Count total streams
-            total_streams = sum(len(ch["streams"]) for ch in valid_channels)
-            print(f"Total streams found: {total_streams}")
-
-            # Generate M3U
-            m3u_content = generate_m3u(valid_channels)
-
-            # Write to file
-            with open("akashdth.m3u", "w", encoding="utf-8") as f:
-                f.write(m3u_content)
-
-            print(f"Playlist saved with {len(valid_channels)} channels and {total_streams} streams")
-
-        except Exception as e:
-            print(f"Error: {e}")
+                f.write("#EXTM3U\n# Error occurred during generation\n")
 
 
 if __name__ == "__main__":
