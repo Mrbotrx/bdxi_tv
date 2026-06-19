@@ -32,7 +32,7 @@ def extract_channels(data):
     return channels
 
 
-# ---------- ONLY VLC FRIENDLY STREAM ----------
+# ---------- FIND ALL VLC FRIENDLY STREAMS ----------
 def get_vlc_streams(obj):
     streams = []
 
@@ -50,7 +50,7 @@ def get_vlc_streams(obj):
                 streams.append(x)
 
     walk(obj)
-    return list(set(streams))
+    return list(set(streams))  # Remove duplicates
 
 
 # ---------- CATEGORY ----------
@@ -71,6 +71,7 @@ def make_header(total):
 ############################################
 # 📺 Total Channels : {total}
 # 🔥 Mode : VLC / IPTV Compatible ONLY
+# 📌 All m3u8 streams included
 ############################################
 # 🕒 Updated : {now}
 ############################################
@@ -100,14 +101,14 @@ async def fetch(session, sem, ch):
                             "name": name,
                             "logo": logo,
                             "category": category,
-                            "streams": streams
+                            "streams": streams  # ALL streams found
                         }
         except Exception as e:
             print(f"Error fetching {name}: {e}")
     return None
 
 
-# ---------- GENERATE M3U ----------
+# ---------- GENERATE M3U WITH ALL STREAMS ----------
 def generate_m3u(channels_data):
     if not channels_data:
         return ""
@@ -118,13 +119,32 @@ def generate_m3u(channels_data):
         name = ch["name"]
         logo = ch["logo"]
         category = ch["category"]
-        streams = ch["streams"]
+        streams = ch["streams"]  # All streams
 
-        # Use first stream
-        stream_url = streams[0]
-
-        m3u += f'#EXTINF:-1 tvg-logo="{logo}" group-title="{category}",{name}\n'
-        m3u += f"{stream_url}\n\n"
+        # Add each stream with a suffix
+        if len(streams) == 1:
+            # Single stream - normal entry
+            m3u += f'#EXTINF:-1 tvg-logo="{logo}" group-title="{category}",{name}\n'
+            m3u += f"{streams[0]}\n\n"
+        else:
+            # Multiple streams - add each with quality/source indicator
+            for idx, stream_url in enumerate(streams, 1):
+                # Try to extract quality from URL
+                quality = "Unknown"
+                if "480" in stream_url or "360" in stream_url:
+                    quality = "SD"
+                elif "720" in stream_url:
+                    quality = "HD"
+                elif "1080" in stream_url:
+                    quality = "FHD"
+                elif "4k" in stream_url.lower() or "2160" in stream_url:
+                    quality = "4K"
+                
+                # Add stream number or quality to name
+                stream_name = f"{name} [{quality}]" if quality != "Unknown" else f"{name} #{idx}"
+                
+                m3u += f'#EXTINF:-1 tvg-logo="{logo}" group-title="{category}",{stream_name}\n'
+                m3u += f"{stream_url}\n\n"
 
     return m3u
 
@@ -160,6 +180,10 @@ async def main():
             valid_channels = [r for r in results if r is not None]
             print(f"Valid channels: {len(valid_channels)}")
 
+            # Count total streams
+            total_streams = sum(len(ch["streams"]) for ch in valid_channels)
+            print(f"Total streams found: {total_streams}")
+
             # Generate M3U
             m3u_content = generate_m3u(valid_channels)
 
@@ -167,7 +191,7 @@ async def main():
             with open("akashdth.m3u", "w", encoding="utf-8") as f:
                 f.write(m3u_content)
 
-            print(f"Playlist saved with {len(valid_channels)} channels")
+            print(f"Playlist saved with {len(valid_channels)} channels and {total_streams} streams")
 
         except Exception as e:
             print(f"Error: {e}")
