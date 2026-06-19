@@ -3,6 +3,7 @@ import re
 import asyncio
 import aiohttp
 from datetime import datetime
+import time
 
 # API endpoints from environment variables
 LIVE_API = os.getenv("LIVE_API")
@@ -14,73 +15,269 @@ HEADERS = {
     "Connection": "keep-alive"
 }
 
-# DRM/License related keywords to detect
+# DRM keywords for URL check only
 DRM_KEYWORDS = [
     'drm', 'license', 'widevine', 'fairplay', 'playready',
     'key', 'token', 'auth', 'sign', 'signature', 'expires',
-    'session', 'kid', 'pssh', 'decrypt', 'encrypted',
-    'protection', 'rights', 'permission', 'verify'
+    'kid', 'pssh', 'decrypt', 'encrypted', 'protection'
 ]
 
 
-def deep_find_m3u8(data):
+def quick_extract_channels(data):
+    """Fast channel extraction"""
+    channels = []
+    try:
+        if isinstance(data, dict):
+            for key in ['contentList', 'channels', 'data', 'items']:
+                if key in data and isinstance(data[key], list):
+                    channels = data[key]
+                    break
+        elif isinstance(data, list):
+            channels = data
+    except:
+        pass
+    return channels
+
+
+def quick_find_m3u8(text):
+    """Fast regex-based m3u8 URL finder"""
+    if isinstance(text, str):
+        return re.findall(r'https?://[^\s"\'<>]+\.m3u8[^\s"\'<>]*', text)
+    return []
+
+
+def separate_streams(urls):
+    """Separate clean and DRM streams"""
+    clean = []
+    drm = []
+    for url in urls:
+        url_lower = url.lower()
+        if any(keyword in url_lower for keyword in DRM_KEYWORDS):
+            drm.append(url)
+        else:
+            clean.append(url)
+    return clean, drm
+
+
+def get_category(ch):
+    """Get category fast"""
+    genre = ch.get("genre")
+    return genre[0] if (isinstance(genre, list) and genre) else "General"
+
+
+def create_header(total, clean_count, drm_count, elapsed):
+    """Create M3U header"""
+    now = datetime.now().strftime("%I:%M %p | %d-%b-%Y")
+    return f"""#EXTM3U
+############################################
+#     📺 ALL CHANNELS - NO ONE LEFT
+############################################
+# 📺 Total Channels : {total}
+# ✅ Clean Streams  : {clean_count}
+# ⚠️ DRM Streams    : {drm_count}
+# ⚡ Time : {elapsed:.1f}s
+# 🕒 {now}
+############################################
+
+"""
+
+
+async def fetch_all_channels(session, channels):
     """
-    Recursively search everywhere in the response
-    to find ALL .m3u8 URLs
+    FAST: Fetch ALL channels - NONE skipped
     """
-    urls = set()
+    sem = asyncio.Semaphore(100)
     
-    def search(obj):
-        if isinstance(obj, str):
-            # Find m3u8 URLs in strings
-            found = re.findall(r'https?://[^\s"\'<>]+\.m3u8[^\s"\'<>]*', obj)
-            urls.update(found)
+    async def fetch_one(ch, idx):
+        pid = ch.get("providerContentId") or ch.get("id")
+        name = ch.get("channelName") or ch.get("title") or f"Channel_{idx}"
+        
+        # Default channel data (even if no PID or error)
+        default = {
+            "id": pid or f"unknown_{idx}",
+            "name": name,
+            "logo": ch.get("logo") or "",
+            "category": get_category(ch),
+            "streams": [],
+            "drm_streams": [],
+            "status": "error"
+        }
+        
+        if not pid:
+            default["status"] = "no_id"
+            return default
+        
+        try:
+            url = DETAIL_API.format(pid)
+            async with sem:
+                async with session.get(url, timeout=10) as resp:
+                    if resp.status >= 400:
+                        default["status"] = f"http_{resp.status}"
+                        return default
+                    
+                    text = await resp.text()
+                    all_urls = quick_find_m3u8(text)
+                    
+                    if not all_urls:
+                        default["status"] = "no_m3u8"
+                        return default
+                    
+                    # Separate clean and DRM
+                    clean, drm = separate_streams(all_urls)
+                    
+                    return {
+                        "id": pid,
+                        "name": name,
+                        "logo": ch.get("logo") or "",
+                        "category": get_category(ch),
+                        "streams": clean,
+                        "drm_streams": drm,
+                        "status": "ok"
+                    }
+        except:
+            default["status"] = "timeout"
+            return default
+    
+    # Process ALL channels
+    tasks = [fetch_one(ch, i) for i, ch in enumerate(channels)]
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+    
+    # Filter exceptions but keep all valid results
+    final = []
+    for r in results:
+        if isinstance(r, dict):
+            final.append(r)
+        elif not isinstance(r, Exception):
+            final.append(r)
+    
+    return final
+
+
+async def main():
+    start_time = time.time()
+    
+    print("\n" + "="*60)
+    print("📺 ALL CHANNELS - 100% OUTPUT GUARANTEED")
+    print("="*60 + "\n")
+    
+    # Connection pooling for speed
+    connector = aiohttp.TCPConnector(
+        limit=200,
+        limit_per_host=100,
+        ttl_dns_cache=300,
+        use_dns_cache=True,
+        force_close=False
+    )
+    
+    timeout = aiohttp.ClientTimeout(
+        total=20,
+        connect=5,
+        sock_read=10
+    )
+    
+    async with aiohttp.ClientSession(
+        headers=HEADERS,
+        connector=connector,
+        timeout=timeout
+    ) as session:
+        
+        # Step 1: Fetch channel list
+        print("📡 Fetching channels...")
+        async with session.get(LIVE_API) as resp:
+            data = await resp.json(content_type=None)
+        
+        channels = quick_extract_channels(data)
+        total_input = len(channels)
+        print(f"✅ Found {total_input} channels\n")
+        
+        # Step 2: Process ALL channels
+        print(f"⚡ Processing ALL {total_input} channels...")
+        results = await fetch_all_channels(session, channels)
+        
+        # Step 3: Statistics (no dedup, keep ALL)
+        total_clean = sum(len(ch["streams"]) for ch in results)
+        total_drm = sum(len(ch["drm_streams"]) for ch in results)
+        
+        ok_count = sum(1 for ch in results if ch["status"] == "ok")
+        error_count = sum(1 for ch in results if ch["status"] != "ok")
+        
+        # Step 4: Build M3U content
+        elapsed = time.time() - start_time
+        lines = [create_header(len(results), total_clean, total_drm, elapsed)]
+        
+        for ch in results:
+            name = ch["name"]
+            status = ch["status"]
             
-        elif isinstance(obj, dict):
-            for v in obj.values():
-                search(v)
+            if status == "ok":
+                if ch["drm_streams"]:
+                    # Channel with some DRM
+                    lines.append(
+                        f'#EXTINF:-1 tvg-id="{ch["id"]}" '
+                        f'tvg-logo="{ch["logo"]}" '
+                        f'group-title="{ch["category"]}",'
+                        f'⚠️ {name} [DRM:{len(ch["drm_streams"])}]\n'
+                    )
+                else:
+                    # Clean channel
+                    lines.append(
+                        f'#EXTINF:-1 tvg-id="{ch["id"]}" '
+                        f'tvg-logo="{ch["logo"]}" '
+                        f'group-title="{ch["category"]}",{name}\n'
+                    )
                 
-        elif isinstance(obj, (list, tuple)):
-            for item in obj:
-                search(item)
-    
-    search(data)
-    return list(urls)
+                # Add clean streams
+                for url in ch["streams"]:
+                    lines.append(url + "\n")
+                    
+                # Comment out DRM streams
+                for url in ch["drm_streams"]:
+                    lines.append(f"#DRM:{url}\n")
+                    
+            elif status == "no_m3u8":
+                lines.append(
+                    f'#EXTINF:-1 tvg-id="{ch["id"]}" '
+                    f'tvg-logo="{ch["logo"]}" '
+                    f'group-title="{ch["category"]}",'
+                    f'❌ {name} [No m3u8]\n'
+                )
+                
+            elif status in ["error", "timeout"]:
+                lines.append(
+                    f'#EXTINF:-1 tvg-id="{ch["id"]}" '
+                    f'tvg-logo="{ch["logo"]}" '
+                    f'group-title="{ch["category"]}",'
+                    f'💥 {name} [Error]\n'
+                )
+                
+            else:
+                lines.append(
+                    f'#EXTINF:-1 tvg-id="{ch["id"]}" '
+                    f'tvg-logo="{ch["logo"]}" '
+                    f'group-title="{ch["category"]}",'
+                    f'❓ {name} [{status}]\n'
+                )
+        
+        # Step 5: Save file
+        with open("all_channels.m3u", "w", encoding="utf-8", buffering=8192) as f:
+            f.write(''.join(lines))
+        
+        # Summary
+        print("\n" + "="*60)
+        print(f"⚡ Completed in {elapsed:.1f} seconds!")
+        print("="*60)
+        print(f"📺 Total Channels in Output : {len(results)} (100%)")
+        print(f"✅ OK with m3u8            : {ok_count}")
+        print(f"⚠️  No m3u8/Error          : {error_count}")
+        print(f"🎯 Clean Streams           : {total_clean}")
+        print(f"🛡️ DRM Streams (commented) : {total_drm}")
+        print("="*60)
+        print(f"\n💾 Saved: all_channels.m3u")
+        print("🎉 100% channels included - NO ONE LEFT BEHIND!\n")
 
 
-def deep_find_license_keys(data):
-    """
-    Find any DRM license keys, tokens, or protected content indicators
-    """
-    keys = []
-    
-    def search(obj, path=""):
-        if isinstance(obj, str):
-            # Check if string contains license key patterns
-            if any(keyword in obj.lower() for keyword in ['license', 'widevine', 'drm', 'fairplay', 'playready', 'pssh', 'kid']):
-                # Extract actual URLs or keys
-                urls = re.findall(r'https?://[^\s"\'<>]+', obj)
-                keys.extend(urls)
-                
-                # Also check for base64 encoded keys
-                base64_keys = re.findall(r'[A-Za-z0-9+/=]{32,}', obj)
-                keys.extend(base64_keys)
-                
-        elif isinstance(obj, dict):
-            # Check for known DRM field names
-            for k, v in obj.items():
-                if any(drm in k.lower() for drm in ['license', 'drm', 'key', 'widevine', 'pssh', 'kid', 'token', 'protection']):
-                    if isinstance(v, str):
-                        keys.append(f"{k}: {v}")
-                search(v, f"{path}.{k}")
-                
-        elif isinstance(obj, (list, tuple)):
-            for i, item in enumerate(obj):
-                search(item, f"{path}[{i}]")
-    
-    search(data)
-    return keys
-
+if __name__ == "__main__":
+    asyncio.run(main())
 
 def has_drm_protection(stream_url):
     """
