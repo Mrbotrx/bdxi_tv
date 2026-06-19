@@ -1,12 +1,11 @@
 #EXTM3U
 ############################################
-#        📡 VLC IPTV CLEAN PLAYLIST
+#        📡 ONLY PLAYABLE CHANNELS
 ############################################
-# 📺 Working Channels : 1
-# ❌ Failed Channels  : 54
-# 🔥 Mode : Only Working Streams
+# 📺 Total Playable : 1
+# 🔥 Mode : Stream Verified & Working
 ############################################
-# 🕒 Updated : 12:33 PM | 19-Jun-2026
+# 🕒 Updated : 12:36 PM | 19-Jun-2026
 ############################################
 
 #EXTINF:-1 tvg-id="10002" tvg-logo="https://tstatic.akash-go.com/cms-ui/images/custom-content/1779607122445.png" group-title="Entertainment",SRK TV
