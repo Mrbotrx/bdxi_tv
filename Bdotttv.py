@@ -62,15 +62,16 @@ def get_category(ch):
 
 
 # ---------- HEADER ----------
-def make_header(total):
+def make_header(total, working, failed):
     now = datetime.now().strftime("%I:%M %p | %d-%b-%Y")
 
     return f"""#EXTM3U
 ############################################
 #        📡 VLC IPTV CLEAN PLAYLIST
 ############################################
-# 📺 Total Channels : {total}
-# 🔥 Mode : VLC / IPTV Compatible ONLY
+# 📺 Working Channels : {working}
+# ❌ Failed Channels  : {failed}
+# 🔥 Mode : Only Working Streams
 ############################################
 # 🕒 Updated : {now}
 ############################################
@@ -78,9 +79,19 @@ def make_header(total):
 """
 
 
+# ---------- VALIDATE STREAM (Check if URL is reachable) ----------
+async def validate_stream(session, stream_url, timeout=10):
+    """Check if the stream URL is actually accessible"""
+    try:
+        async with session.get(stream_url, timeout=timeout, allow_redirects=True) as resp:
+            # Accept 200-399 status codes as valid
+            return resp.status < 400
+    except:
+        return False
+
+
 # ---------- FETCH ----------
 async def fetch(session, sem, ch):
-
     pid = ch.get("providerContentId")
     name = ch.get("channelName") or ch.get("title") or "Unknown"
     logo = ch.get("logo") or ""
@@ -99,12 +110,23 @@ async def fetch(session, sem, ch):
         if not streams:
             return None
 
+        # Filter only working streams
+        working_streams = []
+        for stream in streams:
+            is_valid = await validate_stream(session, stream)
+            if is_valid:
+                working_streams.append(stream)
+
+        # If no working streams found, skip this channel
+        if not working_streams:
+            return None
+
         return {
             "id": pid,
             "name": name,
             "logo": logo,
             "category": category,
-            "streams": streams
+            "streams": working_streams
         }
 
     except:
@@ -113,26 +135,26 @@ async def fetch(session, sem, ch):
 
 # ---------- MAIN ----------
 async def main():
-
     async with aiohttp.ClientSession(headers=HEADERS) as session:
-
         async with session.get(LIVE_API) as r:
             data = await r.json(content_type=None)
 
         channels = extract_channels(data)
+        total_channels = len(channels)
 
-        sem = asyncio.Semaphore(100)
+        sem = asyncio.Semaphore(50)  # Reduced to avoid overwhelming the server
 
         tasks = [fetch(session, sem, ch) for ch in channels]
         results = await asyncio.gather(*tasks)
 
         valid = [x for x in results if x]
         seen = set()
-
-        lines = [make_header(len(valid))]
+        
+        failed_count = total_channels - len(valid)
+        
+        lines = [make_header(len(valid), len(valid), failed_count)]
 
         for ch in valid:
-
             if ch["id"] in seen:
                 continue
 
@@ -150,7 +172,9 @@ async def main():
         with open("akashdth.m3u", "w", encoding="utf-8") as f:
             f.writelines(lines)
 
-        print(f"Saved {len(valid)} VLC-compatible channels")
+        print(f"✅ Saved {len(valid)} working channels")
+        print(f"❌ Failed {failed_count} channels")
+        print(f"📊 Success rate: {(len(valid)/total_channels*100):.1f}%" if total_channels > 0 else "No channels found")
 
 
 if __name__ == "__main__":
