@@ -1,4 +1,3 @@
-
 import os
 import asyncio
 import aiohttp
@@ -31,7 +30,7 @@ def extract_channels(data):
     return channels
 
 
-# ---------- FIND ALL m3u8 STREAMS (ONLY m3u8) ----------
+# ---------- FIND ALL m3u8 STREAMS (RECURSIVE SEARCH) ----------
 def find_all_m3u8(obj):
     streams = []
 
@@ -43,13 +42,12 @@ def find_all_m3u8(obj):
             for i in x:
                 walk(i)
         elif isinstance(x, str):
-            # Find ALL m3u8 URLs - চলে বা না চলে সব নিবে
+            # ALL m3u8 links - any string containing .m3u8
             if ".m3u8" in x.lower():
                 streams.append(x)
-            # এছাড়া m3u8 ছাড়া অন্য কিছু নিবে না
 
     walk(obj)
-    return list(set(streams))  # Duplicate রিমুভ
+    return list(set(streams))  # Remove duplicates
 
 
 # ---------- GET CATEGORY ----------
@@ -67,15 +65,15 @@ def make_header(total_channels, total_streams):
     now = datetime.now().strftime("%I:%M %p | %d-%b-%Y")
     
     return f"""#EXTM3U
-############################################
-#        📡 IPTV PLAYLIST - ALL m3u8 STREAMS
-############################################
+######################################################################
+#                   📡 IPTV PLAYLIST - ALL m3u8 STREAMS
+######################################################################
 # 📺 Total Channels : {total_channels}
 # 📊 Total Streams  : {total_streams}
-# 🔥 All m3u8 streams included (working or not)
-############################################
+# 🔥 ALL m3u8 links found in API (working or not)
+######################################################################
 # 🕒 Updated : {now}
-############################################
+######################################################################
 
 """
 
@@ -99,6 +97,7 @@ async def fetch_channel_details(session, sem, channel):
                     streams = find_all_m3u8(data)
                     
                     if streams:
+                        print(f"✅ {name}: Found {len(streams)} m3u8 stream(s)")
                         return {
                             "name": name,
                             "logo": logo,
@@ -106,11 +105,13 @@ async def fetch_channel_details(session, sem, channel):
                             "streams": streams  # ALL m3u8 streams
                         }
                     else:
-                        print(f"⚠️ No m3u8 found for: {name}")
+                        print(f"⚠️ {name}: No m3u8 found")
                 else:
-                    print(f"⚠️ HTTP {resp.status} for: {name}")
+                    print(f"⚠️ {name}: HTTP {resp.status}")
+        except asyncio.TimeoutError:
+            print(f"⏰ {name}: Timeout")
         except Exception as e:
-            print(f"❌ Error fetching {name}: {e}")
+            print(f"❌ {name}: Error - {e}")
     
     return None
 
@@ -144,9 +145,9 @@ def generate_m3u(channels_data):
 
 # ---------- MAIN FUNCTION ----------
 async def main():
-    print("=" * 60)
+    print("=" * 80)
     print("🚀 STARTING IPTV PLAYLIST GENERATOR (ALL m3u8)")
-    print("=" * 60)
+    print("=" * 80)
 
     # Check API keys
     if not LIVE_API or not DETAIL_API:
@@ -161,7 +162,7 @@ async def main():
     async with aiohttp.ClientSession() as session:
         try:
             # 1. FETCH LIVE CHANNELS
-            print("📥 Fetching live channels...")
+            print("📥 Fetching live channels from API...")
             async with session.get(LIVE_API, headers=HEADERS, timeout=30) as resp:
                 if resp.status != 200:
                     print(f"❌ Failed to fetch live channels: HTTP {resp.status}")
@@ -181,6 +182,7 @@ async def main():
 
             # 3. FETCH DETAILS FOR EACH CHANNEL
             print("🔄 Fetching details for each channel...")
+            print("-" * 80)
             sem = asyncio.Semaphore(10)  # Limit concurrent requests
             
             tasks = [fetch_channel_details(session, sem, ch) for ch in channels]
@@ -188,7 +190,8 @@ async def main():
 
             # 4. FILTER VALID CHANNELS (যেগুলোতে m3u8 আছে)
             valid_channels = [r for r in results if r is not None]
-            print(f"✅ Found {len(valid_channels)} channels with m3u8 streams")
+            print("-" * 80)
+            print(f"✅ Channels with m3u8: {len(valid_channels)} out of {len(channels)}")
 
             # Count total streams
             total_streams = sum(len(ch["streams"]) for ch in valid_channels)
@@ -204,13 +207,17 @@ async def main():
                 f.write(m3u_content)
 
             print(f"✅ Playlist saved to: akashdth.m3u")
-            print(f"📺 Channels with m3u8: {len(valid_channels)}")
+            print(f"📺 Channels with streams: {len(valid_channels)}")
             print(f"🎬 Total m3u8 streams: {total_streams}")
-            print("=" * 60)
+            print("=" * 80)
             print("✨ DONE!")
 
+        except asyncio.TimeoutError:
+            print("❌ Timeout error while fetching data")
         except Exception as e:
             print(f"❌ Critical error: {e}")
+            import traceback
+            traceback.print_exc()
             # Still create a file with error message
             with open("akashdth.m3u", "w", encoding="utf-8") as f:
                 f.write(f"#EXTM3U\n# Error: {e}\n")
