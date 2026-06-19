@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Setup Python
@@ -22,22 +22,44 @@ jobs:
           python-version: "3.11"
 
       - name: Install dependencies
-        run: pip install aiohttp
+        run: |
+          pip install --upgrade pip
+          pip install aiohttp
 
-      - name: Run script
+      - name: Run IPTV playlist generator
         run: python Bdotttv.py
         env:
           LIVE_API: ${{ secrets.LIVE_API }}
           DETAIL_API: ${{ secrets.DETAIL_API }}
 
-      - name: Commit and push changes
+      - name: Commit and push updated playlist
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add akashdth.m3u
+          
+          # Force add the file (even if unchanged)
+          git add -f akashdth.m3u
+          
+          # Check if there are changes to commit
           if git diff --staged --quiet; then
-            echo "No changes to commit"
+            echo "No changes detected in akashdth.m3u"
+            # Create empty commit to trigger update timestamp
+            git commit --allow-empty -m "🔄 Trigger workflow update [skip ci]"
           else
-            git commit -m "Auto update IPTV playlist [skip ci]"
-            git push
+            echo "Changes detected, committing updates..."
+            git commit -m "🔄 Auto update IPTV playlist [skip ci]"
+          fi
+          
+          # Push changes
+          git push
+          
+      - name: Verify file exists
+        run: |
+          if [ -f "akashdth.m3u" ]; then
+            echo "✅ akashdth.m3u exists"
+            lines=$(wc -l < akashdth.m3u)
+            echo "📄 File has $lines lines"
+          else
+            echo "❌ akashdth.m3u not found!"
+            exit 1
           fi
