@@ -14,10 +14,18 @@ HEADERS = {
     "Connection": "keep-alive"
 }
 
+# DRM/License related keywords to detect
+DRM_KEYWORDS = [
+    'drm', 'license', 'widevine', 'fairplay', 'playready',
+    'key', 'token', 'auth', 'sign', 'signature', 'expires',
+    'session', 'kid', 'pssh', 'decrypt', 'encrypted',
+    'protection', 'rights', 'permission', 'verify'
+]
+
 
 def deep_find_m3u8(data):
     """
-    Recursively search every corner of the response
+    Recursively search everywhere in the response
     to find ALL .m3u8 URLs
     """
     urls = set()
@@ -38,6 +46,72 @@ def deep_find_m3u8(data):
     
     search(data)
     return list(urls)
+
+
+def deep_find_license_keys(data):
+    """
+    Find any DRM license keys, tokens, or protected content indicators
+    """
+    keys = []
+    
+    def search(obj, path=""):
+        if isinstance(obj, str):
+            # Check if string contains license key patterns
+            if any(keyword in obj.lower() for keyword in ['license', 'widevine', 'drm', 'fairplay', 'playready', 'pssh', 'kid']):
+                # Extract actual URLs or keys
+                urls = re.findall(r'https?://[^\s"\'<>]+', obj)
+                keys.extend(urls)
+                
+                # Also check for base64 encoded keys
+                base64_keys = re.findall(r'[A-Za-z0-9+/=]{32,}', obj)
+                keys.extend(base64_keys)
+                
+        elif isinstance(obj, dict):
+            # Check for known DRM field names
+            for k, v in obj.items():
+                if any(drm in k.lower() for drm in ['license', 'drm', 'key', 'widevine', 'pssh', 'kid', 'token', 'protection']):
+                    if isinstance(v, str):
+                        keys.append(f"{k}: {v}")
+                search(v, f"{path}.{k}")
+                
+        elif isinstance(obj, (list, tuple)):
+            for i, item in enumerate(obj):
+                search(item, f"{path}[{i}]")
+    
+    search(data)
+    return keys
+
+
+def has_drm_protection(stream_url):
+    """
+    Check if stream URL or its parameters contain DRM indicators
+    """
+    url_lower = stream_url.lower()
+    
+    for keyword in DRM_KEYWORDS:
+        if keyword in url_lower:
+            return True
+    
+    return False
+
+
+def is_clean_stream(stream_url, license_keys):
+    """
+    Determine if stream is clean (no DRM) or protected
+    """
+    # Check URL itself for DRM keywords
+    if has_drm_protection(stream_url):
+        return False
+    
+    # Check if any license key is related to this stream
+    stream_domain = re.findall(r'https?://([^/]+)', stream_url)
+    if stream_domain:
+        domain = stream_domain[0]
+        for key in license_keys:
+            if domain in key:
+                return False
+    
+    return True
 
 
 def extract_channels(data):
@@ -66,16 +140,17 @@ def get_category(ch):
     return "General"
 
 
-def create_header(total_channels, total_streams):
+def create_header(total_channels, total_streams, drm_blocked):
     """Create M3U playlist header"""
     now = datetime.now().strftime("%I:%M %p | %d-%b-%Y")
     return f"""#EXTM3U
 ############################################
-#     ✅ VERIFIED M3U8 PLAYLIST
+#     📺 CLEAN M3U8 PLAYLIST
+#     🚫 DRM/License Protected = REMOVED
 ############################################
-# 📺 Working Channels : {total_channels}
-# 🎯 Total Streams    : {total_streams}
-# 🔒 Only Playable M3U8 Streams
+# 📺 Total Channels     : {total_channels}
+# 🎯 Clean M3U8 Streams : {total_streams}
+# 🛡️ DRM Blocked        : {drm_blocked}
 ############################################
 # 🕒 Last Updated : {now}
 ############################################
@@ -83,41 +158,8 @@ def create_header(total_channels, total_streams):
 """
 
 
-async def verify_stream(session, url, timeout=8):
-    """
-    Actually check if the stream is playable
-    Returns True only if stream is working
-    """
-    try:
-        async with session.get(url, timeout=timeout, allow_redirects=True) as resp:
-            if resp.status >= 400:
-                return False
-            
-            # Read some data to verify it's real M3U8 content
-            try:
-                chunk = await asyncio.wait_for(resp.content.read(1024), timeout=5)
-                text = chunk.decode('utf-8', errors='ignore')
-                
-                # Must contain M3U8 markers
-                if '#EXTM3U' in text or '#EXTINF' in text or '#EXT-X-STREAM-INF' in text:
-                    return True
-                    
-                # Also accept if we got some data and URL ends with .m3u8
-                if len(chunk) > 0 and url.lower().endswith('.m3u8'):
-                    return True
-                    
-            except:
-                # If content check fails, at least URL should return 200
-                return resp.status < 300
-                
-        return False
-        
-    except:
-        return False
-
-
 async def process_channel(session, sem, channel, index, total):
-    """Process one channel - find and verify its m3u8 streams"""
+    """Process one channel - find m3u8 streams and filter out DRM"""
     
     pid = channel.get("providerContentId")
     name = channel.get("channelName") or channel.get("title") or "Unknown"
@@ -129,7 +171,7 @@ async def process_channel(session, sem, channel, index, total):
     
     try:
         async with sem:
-            print(f"[{index}/{total}] Checking: {name}", end=" ")
+            print(f"[{index}/{total}] Processing: {name}", end=" ")
             
             # Fetch channel details
             async with session.get(DETAIL_API.format(pid), timeout=25) as resp:
@@ -143,33 +185,43 @@ async def process_channel(session, sem, channel, index, total):
                     text = await resp.text()
                     data = text  # Fallback to raw text
             
-            # 🔍 Deep search for m3u8 URLs
-            m3u8_urls = deep_find_m3u8(data)
+            # 🔍 Find all m3u8 URLs
+            all_m3u8 = deep_find_m3u8(data)
             
-            if not m3u8_urls:
-                print("❌ No m3u8 found")
+            # 🔑 Find any license keys or DRM info
+            license_keys = deep_find_license_keys(data)
+            
+            if not all_m3u8:
+                print("❌ No m3u8")
                 return None
             
-            print(f"→ Found {len(m3u8_urls)} streams", end=" ")
+            # 🚫 Filter out DRM-protected streams
+            clean_streams = []
+            drm_streams = []
             
-            # ✅ Verify each stream
-            working = []
-            for url in m3u8_urls:
-                if await verify_stream(session, url):
-                    working.append(url)
+            for stream_url in all_m3u8:
+                if is_clean_stream(stream_url, license_keys):
+                    clean_streams.append(stream_url)
+                else:
+                    drm_streams.append(stream_url)
             
-            if not working:
-                print("❌ All dead")
+            # Status display
+            if clean_streams and drm_streams:
+                print(f"⚠️ {len(clean_streams)} clean + {len(drm_streams)} DRM blocked")
+            elif clean_streams:
+                print(f"✅ {len(clean_streams)} clean")
+            else:
+                print(f"🚫 ALL DRM ({len(drm_streams)}) - Skipping")
                 return None
-            
-            print(f"✅ {len(working)} working")
             
             return {
                 "id": pid,
                 "name": name,
                 "logo": logo,
                 "category": category,
-                "streams": working
+                "streams": clean_streams,
+                "drm_count": len(drm_streams),
+                "license_keys": license_keys
             }
             
     except Exception as e:
@@ -178,9 +230,9 @@ async def process_channel(session, sem, channel, index, total):
 
 
 async def main():
-    print("\n" + "="*60)
-    print("🎯 M3U8 STREAM FINDER & VALIDATOR")
-    print("="*60 + "\n")
+    print("\n" + "="*70)
+    print("🎯 M3U8 CLEANER - Keep All m3u8 But Remove DRM/License")
+    print("="*70 + "\n")
     
     async with aiohttp.ClientSession(headers=HEADERS) as session:
         # Get channel list
@@ -191,7 +243,7 @@ async def main():
         channels = extract_channels(data)
         total = len(channels)
         print(f"✅ Found {total} channels\n")
-        print("-"*60)
+        print("-"*70)
         
         # Process all channels
         sem = asyncio.Semaphore(25)
@@ -201,53 +253,69 @@ async def main():
         ]
         results = await asyncio.gather(*tasks)
         
-        # Collect working channels
-        working_channels = [ch for ch in results if ch is not None]
+        # Collect channels with clean streams
+        processed_channels = [ch for ch in results if ch is not None]
         
         # Remove duplicates
         seen = set()
         unique_channels = []
-        for ch in working_channels:
+        for ch in processed_channels:
             if ch["id"] not in seen:
                 seen.add(ch["id"])
                 unique_channels.append(ch)
         
+        # Calculate statistics
+        total_clean_streams = sum(len(ch["streams"]) for ch in unique_channels)
+        total_drm_blocked = sum(ch["drm_count"] for ch in unique_channels)
+        channels_with_drm = [ch for ch in unique_channels if ch["drm_count"] > 0]
+        channels_completely_blocked = total - len(unique_channels)
+        
         # Build M3U content
-        total_streams = sum(len(ch["streams"]) for ch in unique_channels)
-        playlist = [create_header(len(unique_channels), total_streams)]
+        playlist = [create_header(len(unique_channels), total_clean_streams, total_drm_blocked)]
         
         for ch in unique_channels:
+            # Add comment if channel had some DRM blocked streams
+            if ch["drm_count"] > 0:
+                playlist.append(f'## Note: {ch["drm_count"]} DRM streams removed from {ch["name"]}\n')
+            
             # Channel info
             playlist.append(
                 f'#EXTINF:-1 tvg-id="{ch["id"]}" '
                 f'tvg-logo="{ch["logo"]}" '
                 f'group-title="{ch["category"]}",{ch["name"]}\n'
             )
-            # Stream URLs
+            
+            # Clean stream URLs only
             for stream_url in ch["streams"]:
                 playlist.append(stream_url + "\n")
         
         # Save to file
-        output_file = "working_channels.m3u"
+        output_file = "clean_no_drm.m3u"
         with open(output_file, "w", encoding="utf-8") as f:
             f.writelines(playlist)
         
-        # Show summary
-        print("\n" + "="*60)
-        print("📊 FINAL RESULTS")
-        print("="*60)
-        print(f"📡 Total Channels Scanned : {total}")
-        print(f"✅ Working Channels       : {len(unique_channels)}")
-        print(f"🎯 Working M3U8 Streams  : {total_streams}")
-        print(f"❌ Failed/No Stream      : {total - len(unique_channels)}")
+        # Show detailed summary
+        print("\n" + "="*70)
+        print("📊 DETAILED RESULTS")
+        print("="*70)
+        print(f"📡 Total Channels Scanned      : {total}")
+        print(f"✅ Channels with Clean Streams : {len(unique_channels)}")
+        print(f"⛔ Channels Completely Blocked  : {channels_completely_blocked}")
+        print(f"🎯 Total Clean M3U8 Streams    : {total_clean_streams}")
+        print(f"🛡️ Total DRM Streams Blocked   : {total_drm_blocked}")
         
-        if total > 0:
-            rate = len(unique_channels) / total * 100
-            print(f"📈 Success Rate          : {rate:.1f}%")
+        if channels_with_drm:
+            print(f"\n📋 Channels with partial DRM ({len(channels_with_drm)}):")
+            for ch in channels_with_drm[:5]:  # Show first 5
+                print(f"   ⚠️ {ch['name']}: {ch['drm_count']} DRM blocked")
+                if ch.get('license_keys'):
+                    print(f"      🔑 License: {ch['license_keys'][0][:60]}...")
+            if len(channels_with_drm) > 5:
+                print(f"   ... and {len(channels_with_drm) - 5} more")
         
-        print("="*60)
+        print("="*70)
         print(f"\n💾 Saved to: {output_file}")
-        print("🎉 Only playable m3u8 streams included!\n")
+        print("✅ All m3u8 streams kept EXCEPT DRM/License protected ones!\n")
 
 
 if __name__ == "__main__":
