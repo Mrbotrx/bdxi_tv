@@ -1,10 +1,8 @@
 name: Auto Update IPTV Playlist
 
 on:
-  # প্রতি ৩০ মিনিট পর পর চালাবে
   schedule:
-    - cron: '*/30 * * * *'
-  # ম্যানুয়ালি চালানোর জন্য
+    - cron: '*/30 * * * *'   # প্রতি ৩০ মিনিটে চলবে
   workflow_dispatch:
 
 jobs:
@@ -12,27 +10,23 @@ jobs:
     name: Build & Update Playlist
     runs-on: ubuntu-latest
     steps:
-      # ১. কোড নিজে আনো
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}   # সিক্রেটের জন্য (যদি লাগে)
 
-      # ২. Python ইনস্টল করো
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+          cache: 'pip'
 
-      # ৩. Dependencies ইনস্টল করো
       - name: Install dependencies
-        run: pip install requests
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
 
-      # ৪. স্ক্রিপ্ট চালাও
       - name: Generate Playlist
         run: python bot.py
 
-      # ৫. (ঐচ্ছিক) আপডেটেড ম্যানুয়ালি দেখানোর জন্য
       - name: Upload updated kbtvpro.m3u8
         uses: actions/upload-artifact@v4
         with:
