@@ -70,7 +70,6 @@ def fetch_and_filter_playlist():
 
     # ================= FILTER KEYWORDS =================
     KEYWORDS = [
-
         # ---------- Bangladesh ----------
         "bd", "bangla", "bangladesh",
         "channel i", "ntv", "rtv",
@@ -141,7 +140,7 @@ def fetch_and_filter_playlist():
                 current_info = None
                 continue
 
-            # FAST FILTER (keep same logic)
+            # FAST FILTER
             if ".m3u8" not in link.lower() and "live" not in link.lower():
                 current_info = None
                 continue
@@ -163,7 +162,7 @@ def fetch_and_filter_playlist():
 
     print("Checking LIVE streams...")
 
-    # ================= LIVE CHECK (FAST THREADING) =================
+    # ================= LIVE CHECK =================
     final = []
 
     with ThreadPoolExecutor(max_workers=60) as ex:
