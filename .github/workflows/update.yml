@@ -3,7 +3,7 @@ name: Auto Update IPTV Playlist
 on:
   schedule:
     - cron: '*/30 * * * *'   # প্রতি ৩০ মিনিটে চলবে
-  workflow_dispatch:        # ম্যানুয়ালি চালানোর জন্য
+  workflow_dispatch:
 
 jobs:
   update:
@@ -20,5 +20,5 @@ jobs:
       - name: Install dependencies
         run: pip install requests
 
-      - name: Update Playlist
+      - name: Run Playlist Generator
         run: python kbtvpro.py
