@@ -1,8 +1,9 @@
 import os
 from datetime import datetime
-import pytz
-import requests
 from concurrent.futures import ThreadPoolExecutor
+
+import requests
+import pytz
 
 
 # ================= SETTINGS =================
@@ -15,12 +16,11 @@ SOURCE_URLS = [
 
 OUTPUT_FILE = "kbtvpro.m3u8"
 
-DEFAULT_LOGO = (
-    "https://raw.githubusercontent.com/Mrbotrx/bdxi_tv/main/assets/default_tv.png"
-)
+DEFAULT_LOGO = "https://shorturl.at/Egku0"
 
 
-# ================= CHECK STREAM =================
+
+# ================= LIVE CHECK =================
 
 def check_live_stream(channel):
 
@@ -50,16 +50,11 @@ def check_live_stream(channel):
 
 
 
-# ================= MAIN =================
+# ================= LOAD SOURCE =================
 
-def fetch_and_filter_playlist():
+def load_sources():
 
-    all_lines = []
-
-
-    # ================= LOAD SOURCES =================
-
-    print("Loading sources...")
+    lines = []
 
     for url in SOURCE_URLS:
 
@@ -69,7 +64,7 @@ def fetch_and_filter_playlist():
 
         try:
 
-            print("Downloading:", url)
+            print("Loading:", url)
 
             r = requests.get(
                 url,
@@ -79,16 +74,14 @@ def fetch_and_filter_playlist():
                 }
             )
 
-
             print(
                 "Status:",
                 r.status_code
             )
 
-
             if r.status_code == 200:
 
-                all_lines.extend(
+                lines.extend(
                     r.text.splitlines()
                 )
 
@@ -101,14 +94,21 @@ def fetch_and_filter_playlist():
             )
 
 
+    return lines
 
-    # ================= EMPTY CHECK =================
+
+
+# ================= BUILD PLAYLIST =================
+
+def build_playlist():
+
+
+    all_lines = load_sources()
+
 
     if not all_lines:
 
-        print(
-            "No playlist data found"
-        )
+        print("No source data found")
 
         with open(
             OUTPUT_FILE,
@@ -125,31 +125,19 @@ def fetch_and_filter_playlist():
 
 
 
-    seen_links = set()
+    keywords = [
 
-    current_info = None
-
-    channels = []
-
-
-
-    # ================= KEYWORDS =================
-
-    KEYWORDS = [
-
-        "bd",
         "bangla",
         "bangladesh",
+        "bd",
 
         "channel i",
         "ntv",
         "rtv",
-        "ekattor",
         "somoy",
         "jamuna",
-        "gtv",
+        "ekattor",
         "gazi",
-        "banglavision",
 
         "india",
         "zee",
@@ -157,28 +145,29 @@ def fetch_and_filter_playlist():
         "star",
         "colors",
 
-        "sports",
         "sport",
+        "sports",
         "cricket",
         "football",
         "fifa",
-        "uefa",
 
         "tsports",
-        "star sports",
-        "sony sports",
         "espn",
         "bein",
-        "sky sports"
+        "sky"
 
     ]
 
 
+    channels = []
 
-    # ================= PARSE =================
+    seen = set()
+
+    current_info = None
+
+
 
     for line in all_lines:
-
 
         line = line.strip()
 
@@ -196,34 +185,19 @@ def fetch_and_filter_playlist():
 
         elif line.startswith("http"):
 
-
-            link = line
-
+            url = line
 
 
-            if link in seen_links:
-
+            if url in seen:
                 current_info = None
                 continue
 
 
-
-            seen_links.add(link)
-
-
-
-            if ".mp4" in link.lower():
-
-                current_info = None
-                continue
+            seen.add(url)
 
 
 
-            if (
-                ".m3u8" not in link.lower()
-                and "live" not in link.lower()
-            ):
-
+            if ".mp4" in url.lower():
                 current_info = None
                 continue
 
@@ -237,6 +211,8 @@ def fetch_and_filter_playlist():
 
 
 
+            # Add Logo
+
             if "tvg-logo" not in info:
 
                 info = info.replace(
@@ -248,13 +224,13 @@ def fetch_and_filter_playlist():
 
             if any(
                 k in info.lower()
-                for k in KEYWORDS
+                for k in keywords
             ):
 
                 channels.append(
                     (
                         info,
-                        link
+                        url
                     )
                 )
 
@@ -264,17 +240,15 @@ def fetch_and_filter_playlist():
 
 
 
-
     print(
-        "Checking live channels:",
+        "Checking streams:",
         len(channels)
     )
 
 
 
-    # ================= LIVE TEST =================
+    live_channels = []
 
-    final = []
 
     with ThreadPoolExecutor(
         max_workers=20
@@ -290,22 +264,19 @@ def fetch_and_filter_playlist():
         for item in results:
 
             if item:
+                live_channels.append(item)
 
-                final.append(item)
-
-
-
-    # ================= TIME =================
 
 
     dhaka = pytz.timezone(
         "Asia/Dhaka"
     )
 
-    now = datetime.now(
+
+    update_time = datetime.now(
         dhaka
     ).strftime(
-        "%I:%M %p | %d-%b-%Y"
+        "%d-%b-%Y %I:%M %p"
     )
 
 
@@ -324,37 +295,35 @@ def fetch_and_filter_playlist():
 f"""#EXTM3U
 
 ################################
-# IPTV STREAM HUB
-# Dev : KB CYBER TEAM
-# Updated : {now}
-# Total Channels : {len(final)}
+# IPTV AUTO UPDATE
+# Updated: {update_time}
+# Total Channels: {len(live_channels)}
 ################################
 
 """
         )
 
 
-        for info, link in final:
+        for info, url in live_channels:
 
             f.write(
                 info +
                 "\n" +
-                link +
+                url +
                 "\n"
             )
 
 
 
     print(
-        "DONE Channels:",
-        len(final)
+        "DONE:",
+        len(live_channels)
     )
 
 
 
-
-# ================= RUN =================
+# ================= START =================
 
 if __name__ == "__main__":
 
-    fetch_and_filter_playlist()
+    build_playlist()
