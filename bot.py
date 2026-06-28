@@ -1,5 +1,4 @@
 import os
-import base64
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -19,23 +18,11 @@ SOURCE_URLS = [
 OUTPUT_FILE = "kbtvpro.m3u8"
 
 
-# ================= BASE64 LOGO =================
-
-def decode_b64(data):
-    return base64.b64decode(data).decode("utf-8")
+DEFAULT_LOGO = "https://shorturl.at/Egku0"
 
 
-DEFAULT_LOGO = decode_b64(
-    "aHR0cHM6Ly9zaG9ydHVybC5hdC9FZ2t1MA=="
-)
-
-OLD_LOGO = decode_b64(
-    "aHR0cHM6Ly9pbWd1ci5jb20vNzlnMmtNQS5wbmc="
-)
-
-NEW_LOGO = decode_b64(
-    "aHR0cHM6Ly9yYXcuZ2l0aHVidXNlcmNvbnRlbnQuY29tL01yYm90cngvYmR4aV90di9tYWluL2tiY3Rsb2dvLnBuZw=="
-)
+OLD_LOGO = "https://imgur.com/79g2kMA.png"
+NEW_LOGO = "https://raw.githubusercontent.com/Mrbotrx/bdxi_tv/main/kbctlogo.png"
 
 
 HEADERS = {
@@ -59,11 +46,16 @@ def check_live_stream(channel):
             stream=True
         )
 
+
         if r.status_code in [200, 206, 301, 302]:
+
             return info, link
 
+
     except Exception:
+
         return None
+
 
     return None
 
@@ -75,16 +67,23 @@ def load_playlist():
 
     all_lines = []
 
+
     for url in SOURCE_URLS:
 
+
         if not url:
+
             print("Missing source")
             continue
 
 
+
         try:
 
-            print("Loading:", url)
+            print(
+                "Loading:",
+                url
+            )
 
 
             r = requests.get(
@@ -96,22 +95,28 @@ def load_playlist():
 
             if r.status_code == 200:
 
+
                 lines = r.text.splitlines()
+
 
                 print(
                     "Loaded:",
                     len(lines)
                 )
 
+
                 all_lines.extend(lines)
 
 
+
         except Exception as e:
+
 
             print(
                 "Source error:",
                 e
             )
+
 
 
     return all_lines
@@ -124,9 +129,8 @@ def build_playlist():
 
     if not lines:
 
-        print(
-            "No source available"
-        )
+        print("No source available")
+
 
         with open(
             OUTPUT_FILE,
@@ -204,21 +208,25 @@ def build_playlist():
 
     for line in lines:
 
+
         line = line.strip()
 
 
         if not line:
+
             continue
 
 
 
         if line.startswith("#EXTINF"):
 
+
             current_info = line
 
 
 
         elif line.startswith("http"):
+
 
             url = line
 
@@ -261,20 +269,19 @@ def build_playlist():
 
 
 
-            # ================= LOGO REPLACE =================
+            # Replace old logo
 
-            if OLD_LOGO in info:
-
-                info = info.replace(
-                    OLD_LOGO,
-                    NEW_LOGO
-                )
+            info = info.replace(
+                OLD_LOGO,
+                NEW_LOGO
+            )
 
 
 
             # Add default logo if missing
 
             if "tvg-logo" not in info:
+
 
                 info = info.replace(
                     "#EXTINF:-1",
@@ -287,6 +294,7 @@ def build_playlist():
                 word in info.lower()
                 for word in KEYWORDS
             ):
+
 
                 channels.append(
                     (
@@ -305,7 +313,10 @@ def build_playlist():
         "Filtered channels:",
         len(channels)
     )
-        # ================= LIVE CHECK =================
+
+
+
+    # ================= LIVE CHECK =================
 
     live_channels = []
 
@@ -332,6 +343,7 @@ def build_playlist():
 
             result = future.result()
 
+
             if result:
 
                 live_channels.append(result)
@@ -342,10 +354,7 @@ def build_playlist():
         "Live channels:",
         len(live_channels)
     )
-
-
-
-    # ================= TIME =================
+        # ================= TIME =================
 
     dhaka = pytz.timezone(
         "Asia/Dhaka"
@@ -382,7 +391,18 @@ f"""#EXTM3U
         )
 
 
+
         for info, url in live_channels:
+
+
+            # Final logo protection
+            # imgur logo কখনো output হবে না
+
+            info = info.replace(
+                OLD_LOGO,
+                NEW_LOGO
+            )
+
 
             f.write(
                 info +
