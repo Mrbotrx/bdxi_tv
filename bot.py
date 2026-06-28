@@ -1,12 +1,12 @@
 import os
 from datetime import datetime
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import requests
 import pytz
 
 
-# ================= SETTINGS =================
+# ================= SOURCES =================
 
 SOURCE_URLS = [
     os.getenv("KBPROTV"),
@@ -14,79 +14,99 @@ SOURCE_URLS = [
     os.getenv("ABCD")
 ]
 
+
 OUTPUT_FILE = "kbtvpro.m3u8"
+
 
 DEFAULT_LOGO = "https://shorturl.at/Egku0"
 
 
+HEADERS = {
+    "User-Agent": "Mozilla/5.0"
+}
 
-# ================= LIVE CHECK =================
+
+
+# ================= FAST LIVE CHECK =================
 
 def check_live_stream(channel):
 
     info, link = channel
 
-    if not link or not link.startswith("http"):
-        return None
-
     try:
 
         r = requests.get(
             link,
-            timeout=5,
-            stream=True,
-            headers={
-                "User-Agent": "Mozilla/5.0"
-            }
+            timeout=2,
+            headers=HEADERS,
+            stream=True
         )
 
+
         if r.status_code in [200, 206, 301, 302]:
+
             return info, link
 
+
     except Exception:
-        pass
+
+        return None
+
 
     return None
 
 
 
-# ================= LOAD SOURCE =================
+# ================= LOAD PLAYLIST =================
 
-def load_sources():
+def load_playlist():
 
-    lines = []
+    all_lines = []
+
 
     for url in SOURCE_URLS:
 
+
         if not url:
+
             print("Missing source")
+
             continue
+
 
         try:
 
-            print("Loading:", url)
+            print(
+                "Loading:",
+                url
+            )
+
 
             r = requests.get(
                 url,
-                timeout=15,
-                headers={
-                    "User-Agent": "Mozilla/5.0"
-                }
+                timeout=10,
+                headers=HEADERS
             )
 
-            print(
-                "Status:",
-                r.status_code
-            )
 
             if r.status_code == 200:
 
-                lines.extend(
-                    r.text.splitlines()
+
+                lines = r.text.splitlines()
+
+
+                print(
+                    "Loaded:",
+                    len(lines)
                 )
 
 
+                all_lines.extend(lines)
+
+
+
         except Exception as e:
+
 
             print(
                 "Source error:",
@@ -94,7 +114,8 @@ def load_sources():
             )
 
 
-    return lines
+    return all_lines
+
 
 
 
@@ -103,12 +124,17 @@ def load_sources():
 def build_playlist():
 
 
-    all_lines = load_sources()
+    lines = load_playlist()
 
 
-    if not all_lines:
 
-        print("No source data found")
+    if not lines:
+
+
+        print(
+            "No source available"
+        )
+
 
         with open(
             OUTPUT_FILE,
@@ -116,47 +142,67 @@ def build_playlist():
             encoding="utf-8"
         ) as f:
 
+
             f.write(
                 "#EXTM3U\n"
                 "# No source available\n"
             )
 
+
         return
 
 
 
-    keywords = [
 
+    KEYWORDS = [
+
+        # Bangladesh
+
+        "bd",
         "bangla",
         "bangladesh",
-        "bd",
-
         "channel i",
         "ntv",
         "rtv",
+        "ekattor",
         "somoy",
         "jamuna",
-        "ekattor",
+        "gtv",
         "gazi",
+        "banglavision",
+        "boishakhi",
+        "desh tv",
+
+
+        # India
 
         "india",
         "zee",
-        "sony",
         "star",
+        "sony",
         "colors",
+        "zee bangla",
+        "star plus",
+        "sony sab",
+        "sun tv",
+
+
+        # Sports
 
         "sport",
         "sports",
         "cricket",
         "football",
         "fifa",
-
+        "uefa",
         "tsports",
+        "t sports",
         "espn",
         "bein",
-        "sky"
+        "sky sports"
 
     ]
+
 
 
     channels = []
@@ -167,17 +213,21 @@ def build_playlist():
 
 
 
-    for line in all_lines:
+
+    for line in lines:
+
 
         line = line.strip()
 
 
         if not line:
+
             continue
 
 
 
         if line.startswith("#EXTINF"):
+
 
             current_info = line
 
@@ -185,12 +235,17 @@ def build_playlist():
 
         elif line.startswith("http"):
 
+
             url = line
 
 
+
             if url in seen:
+
                 current_info = None
+
                 continue
+
 
 
             seen.add(url)
@@ -198,40 +253,69 @@ def build_playlist():
 
 
             if ".mp4" in url.lower():
+
                 current_info = None
+
                 continue
 
 
 
+            if (
+                ".m3u8" not in url.lower()
+                and
+                "live" not in url.lower()
+            ):
+
+                current_info = None
+
+                continue
+
+
+
+
             info = (
+
                 current_info
+
                 if current_info
+
                 else "#EXTINF:-1,Live TV"
+
             )
 
 
 
-            # Add Logo
 
             if "tvg-logo" not in info:
 
+
                 info = info.replace(
+
                     "#EXTINF:-1",
+
                     f'#EXTINF:-1 tvg-logo="{DEFAULT_LOGO}"'
+
                 )
 
 
 
+
             if any(
-                k in info.lower()
-                for k in keywords
+
+                word in info.lower()
+
+                for word in KEYWORDS
+
             ):
 
+
                 channels.append(
+
                     (
                         info,
                         url
                     )
+
                 )
 
 
@@ -240,44 +324,93 @@ def build_playlist():
 
 
 
+
     print(
-        "Checking streams:",
+
+        "Filtered channels:",
+
         len(channels)
+
     )
 
+
+
+
+    # ================= LIVE CHECK =================
 
 
     live_channels = []
 
 
+
     with ThreadPoolExecutor(
-        max_workers=20
+
+        max_workers=100
+
     ) as executor:
 
 
-        results = executor.map(
-            check_live_stream,
-            channels
-        )
+        futures = [
+
+            executor.submit(
+
+                check_live_stream,
+
+                c
+
+            )
+
+            for c in channels
+
+        ]
 
 
-        for item in results:
 
-            if item:
-                live_channels.append(item)
+        for future in as_completed(futures):
 
+
+            result = future.result()
+
+
+            if result:
+
+
+                live_channels.append(result)
+
+
+
+
+    print(
+
+        "Live channels:",
+
+        len(live_channels)
+
+    )
+
+
+
+
+    # ================= TIME =================
 
 
     dhaka = pytz.timezone(
+
         "Asia/Dhaka"
+
     )
 
 
     update_time = datetime.now(
+
         dhaka
+
     ).strftime(
-        "%d-%b-%Y %I:%M %p"
+
+        "%I:%M %p | %d-%b-%Y"
+
     )
+
 
 
 
@@ -285,44 +418,65 @@ def build_playlist():
 
 
     with open(
+
         OUTPUT_FILE,
+
         "w",
+
         encoding="utf-8"
+
     ) as f:
 
 
+
         f.write(
+
 f"""#EXTM3U
 
-################################
+#################################
 # IPTV AUTO UPDATE
-# Updated: {update_time}
-# Total Channels: {len(live_channels)}
-################################
+# Updated : {update_time}
+# Total Live : {len(live_channels)}
+#################################
 
 """
+
         )
+
 
 
         for info, url in live_channels:
 
+
             f.write(
+
                 info +
+
                 "\n" +
+
                 url +
+
                 "\n"
+
             )
 
 
 
+
     print(
-        "DONE:",
-        len(live_channels)
+
+        "DONE",
+
+        OUTPUT_FILE
+
     )
 
 
 
+
+
 # ================= START =================
+
 
 if __name__ == "__main__":
 
