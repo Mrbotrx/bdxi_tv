@@ -2,11 +2,11 @@
 ######################################################################
 #                   📡 IPTV PLAYLIST - ALL m3u8 STREAMS
 ######################################################################
-# 📺 Total Channels : 56
-# 📊 Total Streams  : 56
+# 📺 Total Channels : 44
+# 📊 Total Streams  : 44
 # 🔥 ALL m3u8 links found in API
 ######################################################################
-# 🕒 Updated : 06:50 AM | 30-Jun-2026
+# 🕒 Updated : 10:27 AM | 30-Jun-2026
 ######################################################################
 
 #EXTINF:-1 tvg-logo="https://tstatic.akash-go.com/cms-ui/images/custom-content/1762850019257.png" group-title="Sports",Sony Sports TEN 2
@@ -126,44 +126,8 @@ https://nomawnoijl.gpcdn.net/akash/luckyfamily/playlist.m3u8
 #EXTINF:-1 tvg-logo="https://tstatic.akash-go.com/cms-ui/images/custom-content/1770381398090.png" group-title="Kids",Kids Stars
 https://nomawnoijl.gpcdn.net/akash/kidsstars/playlist.m3u8
 
-#EXTINF:-1 tvg-logo="https://tstatic.akash-go.com/cms-ui/images/custom-content/1779607122445.png" group-title="Entertainment",SRK TV
-https://srknowapp.ncare.live/srktvhlswodrm/srktv.stream/playlist.m3u8
-
-#EXTINF:-1 tvg-logo="https://tstatic.akash-go.com/cms-ui/images/custom-content/1779609962271.png" group-title="Sports",Sports Legends
-https://nomawnoijl.gpcdn.net/akash/sportslegends/playlist.m3u8
-
-#EXTINF:-1 tvg-logo="https://tstatic.akash-go.com/cms-ui/images/custom-content/1777454219313.png" group-title="News",Al Jazeera
-https://owrcovcrpy.gpcdn.net/bpk-tv/1721/output/index.m3u8
-
-#EXTINF:-1 tvg-logo="https://tstatic.akash-go.com/cms-ui/images/custom-content/1781166550297.png" group-title="News",BTV Shangshad
-https://owrcovcrpy.gpcdn.net/bpk-tv/1709/output/index.m3u8
-
-#EXTINF:-1 tvg-logo="https://tstatic.akash-go.com/cms-ui/images/custom-content/1778083145889.png" group-title="Music",Party Universe
-https://nomawnoijl.gpcdn.net/akash/partyuniverse/playlist.m3u8
-
-#EXTINF:-1 tvg-logo="https://tstatic.akash-go.com/cms-ui/images/custom-content/1778086065071.png" group-title="Infotainment",Al Quran
-https://owrcovcrpy.gpcdn.net/bpk-tv/1713/output/index.m3u8
-
-#EXTINF:-1 tvg-logo="https://tstatic.akash-go.com/cms-ui/images/custom-content/1778087037971.png" group-title="News",Independent TV 
-https://owrcovcrpy.gpcdn.net/bpk-tv/1704/output/index.m3u8
-
-#EXTINF:-1 tvg-logo="https://tstatic.akash-go.com/cms-ui/images/custom-content/1778083459294.png" group-title="Kids",Nikki
-https://nomawnoijl.gpcdn.net/akash/nikky/playlist.m3u8
-
-#EXTINF:-1 tvg-logo="https://tstatic.akash-go.com/cms-ui/images/custom-content/1778085327477.png" group-title="Movies",Originals
-https://nomawnoijl.gpcdn.net/akash/originals/playlist.m3u8
-
-#EXTINF:-1 tvg-logo="https://tstatic.akash-go.com/cms-ui/images/custom-content/1778085745609.png" group-title="Sports",Crazy Ex
-https://nomawnoijl.gpcdn.net/akash/crazy_ex/playlist.m3u8
-
-#EXTINF:-1 tvg-logo="https://tstatic.akash-go.com/cms-ui/images/custom-content/1778086478755.png" group-title="Infotainment",Delicious
-https://nomawnoijl.gpcdn.net/akash/delicious/playlist.m3u8
-
 #EXTINF:-1 tvg-logo="https://tstatic.akash-go.com/cms-ui/images/custom-content/1778087459461.png" group-title="Infotainment",Program Promo
 https://owrcovcrpy.gpcdn.net/bpk-tv/1720/output/index.m3u8
-
-#EXTINF:-1 tvg-logo="https://tstatic.akash-go.com/cms-ui/images/custom-content/1779610478709.png" group-title="Sports",Sports Range
-https://nomawnoijl.gpcdn.net/akash/sportrange/playlist.m3u8
 
 #EXTINF:-1 tvg-logo="https://tstatic.akash-go.com/cms-ui/images/custom-content/1780310920616.png" group-title="Movies",Sony Max
 https://owrcovcrpy.gpcdn.net/bpk-tv/1730/output/index.m3u8
