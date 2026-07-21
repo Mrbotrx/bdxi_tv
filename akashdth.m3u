@@ -2,11 +2,11 @@
 ######################################################################
 #                   📡 IPTV PLAYLIST - ALL m3u8 STREAMS
 ######################################################################
-# 📺 Total Channels : 56
-# 📊 Total Streams  : 56
+# 📺 Total Channels : 55
+# 📊 Total Streams  : 55
 # 🔥 ALL m3u8 links found in API
 ######################################################################
-# 🕒 Updated : 07:56 AM | 21-Jul-2026
+# 🕒 Updated : 10:21 AM | 21-Jul-2026
 ######################################################################
 
 #EXTINF:-1 tvg-logo="https://tstatic.akash-go.com/cms-ui/images/custom-content/1762850019257.png" group-title="Sports",Sony Sports TEN 2
@@ -110,9 +110,6 @@ https://owrcovcrpy.gpcdn.net/bpk-tv/1731/output/index.m3u8
 
 #EXTINF:-1 tvg-logo="https://tstatic.akash-go.com/cms-ui/images/custom-content/1740380280065.png" group-title="Entertainment",Sony Entertainment
 https://owrcovcrpy.gpcdn.net/bpk-tv/1718/output/index.m3u8
-
-#EXTINF:-1 tvg-logo="https://tstatic.akash-go.com/cms-ui/images/custom-content/1777739297698.png" group-title="Infotainment",Al Quran
-https://owrcovcrpy.gpcdn.net/bpk-tv/1713/output/index.m3u8
 
 #EXTINF:-1 tvg-logo="https://tstatic.akash-go.com/cms-ui/images/custom-content/1770378215384.png" group-title="Music",Party Universe
 https://nomawnoijl.gpcdn.net/akash/partyuniverse/playlist.m3u8
