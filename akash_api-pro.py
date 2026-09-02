@@ -4,13 +4,12 @@ import json
 import re
 import time
 from pathlib import Path
-from urllib.parse import urlparse
 
 import requests
 
 
 # ============================================================
-# AKASH API CONFIG
+# CONFIG
 # ============================================================
 
 SEARCH_API = (
@@ -23,49 +22,36 @@ CHANNEL_API = (
     "content-detail/pub/api/v6/channels/{}"
 )
 
-
-# ============================================================
-# OUTPUT FILES
-# ============================================================
-
 M3U_FILE = Path("akash_DTH.m3u")
-
 JSON_FILE = Path("akash_DTH.json")
 
-
-# ============================================================
-# SETTINGS
-# ============================================================
-
 TIMEOUT = 30
-
 RETRIES = 3
-
 DELAY = 0.15
 
-USER_AGENT = (
+DEFAULT_USER_AGENT = (
     "Abu-Saeeidx/5.0.6 "
     "(Linux;Android 11) AndroidXMedia"
 )
 
 
 # ============================================================
-# HTTP SESSION
+# SESSION
 # ============================================================
 
 session = requests.Session()
 
 session.headers.update({
-    "User-Agent": USER_AGENT,
-    "Accept": "application/json,text/plain,*/*",
+    "User-Agent": DEFAULT_USER_AGENT,
+    "Accept": "application/json, text/plain, */*",
 })
 
 
 # ============================================================
-# GENERIC REQUEST
+# HTTP
 # ============================================================
 
-def request_json(url):
+def get_json(url):
 
     last_error = None
 
@@ -76,6 +62,7 @@ def request_json(url):
             response = session.get(
                 url,
                 timeout=TIMEOUT,
+                allow_redirects=True,
             )
 
             response.raise_for_status()
@@ -87,20 +74,18 @@ def request_json(url):
             last_error = error
 
             print(
-                f"  Request failed "
-                f"({attempt}/{RETRIES})"
+                f"    Request attempt "
+                f"{attempt}/{RETRIES} failed: {error}"
             )
 
             if attempt < RETRIES:
                 time.sleep(1)
 
-    raise RuntimeError(
-        f"API request failed: {last_error}"
-    )
+    raise RuntimeError(last_error)
 
 
 # ============================================================
-# RECURSIVE JSON WALKER
+# RECURSIVE WALK
 # ============================================================
 
 def walk(value):
@@ -110,21 +95,19 @@ def walk(value):
         yield value
 
         for child in value.values():
-
             yield from walk(child)
 
     elif isinstance(value, list):
 
         for child in value:
-
             yield from walk(child)
 
 
 # ============================================================
-# TEXT CLEAN
+# STRING CLEAN
 # ============================================================
 
-def text(value):
+def clean(value):
 
     if value is None:
         return ""
@@ -132,48 +115,309 @@ def text(value):
     if isinstance(value, (dict, list)):
         return ""
 
-    return str(value).strip()
+    value = str(value).strip()
 
+    value = value.replace(
+        "\\/",
+        "/"
+    )
 
-# ============================================================
-# URL CHECK
-# ============================================================
+    value = value.replace(
+        "\\u0026",
+        "&"
+    )
 
-def valid_url(value):
-
-    value = text(value)
-
-    if not value:
-        return ""
-
-    if not value.startswith(
-        ("http://", "https://")
-    ):
-        return ""
+    value = value.strip(
+        "\"' \t\r\n,;)]}"
+    )
 
     return value
 
 
 # ============================================================
-# FIND ALL IDS
+# URL
+# ============================================================
+
+def valid_http_url(value):
+
+    value = clean(value)
+
+    if value.startswith(
+        ("http://", "https://")
+    ):
+        return value
+
+    return ""
+
+
+# ============================================================
+# URL REGEX
+# ============================================================
+
+URL_REGEX = re.compile(
+    r'https?://[^\s"\'<>\\]+',
+    re.IGNORECASE
+)
+
+
+# ============================================================
+# EXTRACT ALL URLS FROM ANY JSON
+# ============================================================
+
+def extract_all_urls(data):
+
+    urls = []
+    seen = set()
+
+    def add(url):
+
+        url = clean(url)
+
+        if not url:
+            return
+
+        if not url.startswith(
+            ("http://", "https://")
+        ):
+            return
+
+        if url not in seen:
+
+            seen.add(url)
+            urls.append(url)
+
+    for item in walk(data):
+
+        # -----------------------------------------------
+        # Direct string
+        # -----------------------------------------------
+
+        if isinstance(item, str):
+
+            for match in URL_REGEX.findall(item):
+
+                add(match)
+
+        # -----------------------------------------------
+        # Dictionary values
+        # -----------------------------------------------
+
+        elif isinstance(item, dict):
+
+            for value in item.values():
+
+                if not isinstance(
+                    value,
+                    str
+                ):
+                    continue
+
+                for match in URL_REGEX.findall(
+                    value
+                ):
+
+                    add(match)
+
+    return urls
+
+
+# ============================================================
+# FIND STREAM URL
+# ============================================================
+
+def find_stream(data):
+
+    urls = extract_all_urls(data)
+
+    # --------------------------------------------------------
+    # Highest priority: M3U8
+    # --------------------------------------------------------
+
+    for url in urls:
+
+        if ".m3u8" in url.lower():
+
+            return url
+
+    # --------------------------------------------------------
+    # DASH
+    # --------------------------------------------------------
+
+    for url in urls:
+
+        if ".mpd" in url.lower():
+
+            return url
+
+    # --------------------------------------------------------
+    # Generic live stream
+    # --------------------------------------------------------
+
+    keywords = (
+        "stream",
+        "live",
+        "playlist",
+        "manifest",
+        "playback",
+    )
+
+    for url in urls:
+
+        lower = url.lower()
+
+        if any(
+            word in lower
+            for word in keywords
+        ):
+
+            return url
+
+    return ""
+
+
+# ============================================================
+# FIND VALUE BY KEY
+# ============================================================
+
+def find_values_by_keys(data, wanted_keys):
+
+    wanted = {
+        str(x).lower().replace("-", "_")
+        for x in wanted_keys
+    }
+
+    values = []
+
+    for obj in walk(data):
+
+        if not isinstance(obj, dict):
+            continue
+
+        for key, value in obj.items():
+
+            normalized = (
+                str(key)
+                .lower()
+                .replace("-", "_")
+            )
+
+            if normalized not in wanted:
+                continue
+
+            value = clean(value)
+
+            if value:
+                values.append(value)
+
+    return values
+
+
+# ============================================================
+# CHANNEL NAME
+# ============================================================
+
+def find_name(data):
+
+    keys = {
+        "name",
+        "channelname",
+        "channel_name",
+        "title",
+        "displayname",
+        "display_name",
+        "channelTitle",
+        "channel_title",
+    }
+
+    values = find_values_by_keys(
+        data,
+        keys
+    )
+
+    for value in values:
+
+        lower = value.lower()
+
+        if (
+            "http://" not in lower
+            and "https://" not in lower
+            and ".m3u8" not in lower
+            and len(value) <= 200
+        ):
+
+            return value
+
+    return ""
+
+
+# ============================================================
+# LOGO
+# ============================================================
+
+def find_logo(data):
+
+    keys = {
+        "logo",
+        "logo_url",
+        "logourl",
+        "image",
+        "image_url",
+        "imageurl",
+        "thumbnail",
+        "thumbnail_url",
+        "thumbnailurl",
+        "poster",
+        "icon",
+    }
+
+    values = find_values_by_keys(
+        data,
+        keys
+    )
+
+    for value in values:
+
+        if value.startswith(
+            ("http://", "https://")
+        ):
+
+            return value
+
+    return ""
+
+
+# ============================================================
+# OTHER METADATA
+# ============================================================
+
+def find_first(data, keys):
+
+    values = find_values_by_keys(
+        data,
+        keys
+    )
+
+    return values[0] if values else ""
+
+
+# ============================================================
+# IDS
 # ============================================================
 
 def extract_ids(data):
 
+    ids = []
+    seen = set()
+
     priority_keys = {
         "channelid",
         "channel_id",
-        "channelId".lower(),
         "contentid",
         "content_id",
     }
 
-    ids = []
-
-    seen = set()
-
     # --------------------------------------------------------
-    # First priority: channel-specific IDs
+    # Priority IDs
     # --------------------------------------------------------
 
     for obj in walk(data):
@@ -183,26 +427,27 @@ def extract_ids(data):
 
         for key, value in obj.items():
 
-            k = str(key).lower().replace(
-                "-",
-                "_"
+            normalized = (
+                str(key)
+                .lower()
+                .replace("-", "_")
             )
 
-            if k in priority_keys:
+            if normalized not in priority_keys:
+                continue
 
-                value = text(value)
+            value = clean(value)
 
-                if (
-                    value
-                    and value not in seen
-                ):
+            if (
+                value
+                and value not in seen
+            ):
 
-                    seen.add(value)
-
-                    ids.append(value)
+                seen.add(value)
+                ids.append(value)
 
     # --------------------------------------------------------
-    # Second priority: generic ID
+    # Normal ID
     # --------------------------------------------------------
 
     for obj in walk(data):
@@ -215,7 +460,7 @@ def extract_ids(data):
             if str(key).lower() != "id":
                 continue
 
-            value = text(value)
+            value = clean(value)
 
             if not value:
                 continue
@@ -230,277 +475,13 @@ def extract_ids(data):
             if value not in seen:
 
                 seen.add(value)
-
                 ids.append(value)
 
     return ids
 
 
 # ============================================================
-# NAME FINDER
-# ============================================================
-
-NAME_KEYS = {
-    "name",
-    "channelname",
-    "channel_name",
-    "title",
-    "displayname",
-    "display_name",
-}
-
-
-def find_name(data):
-
-    candidates = []
-
-    for obj in walk(data):
-
-        if not isinstance(obj, dict):
-            continue
-
-        for key, value in obj.items():
-
-            k = str(key).lower().replace(
-                "-",
-                "_"
-            )
-
-            if k not in NAME_KEYS:
-                continue
-
-            value = text(value)
-
-            if not value:
-                continue
-
-            if len(value) > 200:
-                continue
-
-            lower = value.lower()
-
-            if (
-                "http://" in lower
-                or "https://" in lower
-                or ".m3u8" in lower
-            ):
-                continue
-
-            candidates.append(value)
-
-    return candidates[0] if candidates else ""
-
-
-# ============================================================
-# LOGO FINDER
-# ============================================================
-
-LOGO_KEYS = {
-    "logo",
-    "logourl",
-    "logo_url",
-    "image",
-    "imageurl",
-    "image_url",
-    "thumbnail",
-    "thumbnailurl",
-    "thumbnail_url",
-    "poster",
-}
-
-
-def find_logo(data):
-
-    for obj in walk(data):
-
-        if not isinstance(obj, dict):
-            continue
-
-        for key, value in obj.items():
-
-            k = str(key).lower().replace(
-                "-",
-                "_"
-            )
-
-            if k not in LOGO_KEYS:
-                continue
-
-            url = valid_url(value)
-
-            if url:
-                return url
-
-    return ""
-
-
-# ============================================================
-# STREAM URL FINDER
-# ============================================================
-
-STREAM_KEYS = {
-    "link",
-    "url",
-    "stream",
-    "streamurl",
-    "stream_url",
-    "playurl",
-    "play_url",
-    "playbackurl",
-    "playback_url",
-    "source",
-    "src",
-    "manifest",
-    "m3u8",
-    "hls",
-}
-
-
-def is_stream(url):
-
-    url = valid_url(url)
-
-    if not url:
-        return False
-
-    lower = url.lower()
-
-    if ".m3u8" in lower:
-        return True
-
-    if ".mpd" in lower:
-        return True
-
-    for word in (
-        "m3u8",
-        "manifest",
-        "playlist",
-        "stream",
-        "playback",
-        "live",
-    ):
-
-        if word in lower:
-            return True
-
-    return False
-
-
-def find_stream(data):
-
-    candidates = []
-
-    for obj in walk(data):
-
-        if not isinstance(obj, dict):
-            continue
-
-        for key, value in obj.items():
-
-            k = str(key).lower().replace(
-                "-",
-                "_"
-            )
-
-            if k not in STREAM_KEYS:
-                continue
-
-            url = valid_url(value)
-
-            if url:
-                candidates.append(url)
-
-    # Prefer HLS
-    for url in candidates:
-
-        if ".m3u8" in url.lower():
-
-            return url
-
-    # DASH
-    for url in candidates:
-
-        if ".mpd" in url.lower():
-
-            return url
-
-    # Generic stream
-    for url in candidates:
-
-        if is_stream(url):
-
-            return url
-
-    return ""
-
-
-# ============================================================
-# FALLBACK URL SEARCH
-# ============================================================
-
-URL_REGEX = re.compile(
-    r'https?://[^\s"\'<>]+',
-    re.IGNORECASE
-)
-
-
-def fallback_stream(data):
-
-    for item in walk(data):
-
-        if not isinstance(item, str):
-            continue
-
-        matches = URL_REGEX.findall(item)
-
-        for url in matches:
-
-            url = url.rstrip(
-                " ,;)]}"
-            )
-
-            if ".m3u8" in url.lower():
-
-                return url
-
-    return ""
-
-
-# ============================================================
-# EXTRA METADATA
-# ============================================================
-
-def find_value(data, keys):
-
-    keys = {
-        x.lower().replace("-", "_")
-        for x in keys
-    }
-
-    for obj in walk(data):
-
-        if not isinstance(obj, dict):
-            continue
-
-        for key, value in obj.items():
-
-            k = str(key).lower().replace(
-                "-",
-                "_"
-            )
-
-            if k in keys:
-
-                value = text(value)
-
-                if value:
-                    return value
-
-    return ""
-
-
-# ============================================================
-# CHANNEL DETAILS
+# CHANNEL API
 # ============================================================
 
 def get_channel(channel_id):
@@ -509,26 +490,22 @@ def get_channel(channel_id):
         channel_id
     )
 
-    data = request_json(url)
+    data = get_json(url)
 
     name = find_name(data)
 
     logo = find_logo(data)
 
-    stream = find_stream(data)
+    link = find_stream(data)
 
-    if not stream:
-
-        stream = fallback_stream(data)
-
-    origin = find_value(
+    origin = find_first(
         data,
         {
             "origin",
         }
     )
 
-    referrer = find_value(
+    referrer = find_first(
         data,
         {
             "referrer",
@@ -536,7 +513,7 @@ def get_channel(channel_id):
         }
     )
 
-    user_agent = find_value(
+    user_agent = find_first(
         data,
         {
             "userAgent",
@@ -545,14 +522,14 @@ def get_channel(channel_id):
         }
     )
 
-    cookie = find_value(
+    cookie = find_first(
         data,
         {
             "cookie",
         }
     )
 
-    drm_scheme = find_value(
+    drm_scheme = find_first(
         data,
         {
             "drmScheme",
@@ -560,7 +537,7 @@ def get_channel(channel_id):
         }
     )
 
-    drm_license = find_value(
+    drm_license = find_first(
         data,
         {
             "drmLicense",
@@ -571,13 +548,13 @@ def get_channel(channel_id):
     return {
         "id": channel_id,
         "name": name,
-        "link": stream,
+        "link": link,
         "logo": logo,
         "origin": origin,
         "referrer": referrer,
         "userAgent": (
             user_agent
-            or USER_AGENT
+            or DEFAULT_USER_AGENT
         ),
         "cookie": cookie,
         "drmScheme": drm_scheme,
@@ -586,12 +563,12 @@ def get_channel(channel_id):
 
 
 # ============================================================
-# CHANNEL NAME
+# NAME
 # ============================================================
 
-def make_name(name, channel_id):
+def final_name(name, channel_id):
 
-    name = text(name)
+    name = clean(name)
 
     if not name:
 
@@ -605,16 +582,16 @@ def make_name(name, channel_id):
         flags=re.IGNORECASE,
     )
 
-    return f"{name.strip()} KB"
+    return f"{name} KB"
 
 
 # ============================================================
-# M3U ESCAPE
+# M3U ATTRIBUTE ESCAPE
 # ============================================================
 
-def escape_attr(value):
+def attr(value):
 
-    value = text(value)
+    value = clean(value)
 
     return value.replace(
         '"',
@@ -630,12 +607,12 @@ def create_m3u(channels):
 
     lines = [
         "#EXTM3U",
-        ""
+        "",
     ]
 
     for channel in channels:
 
-        name = make_name(
+        name = final_name(
             channel["name"],
             channel["id"]
         )
@@ -647,8 +624,8 @@ def create_m3u(channels):
             ""
         )
 
-        origin = channel.get(
-            "origin",
+        user_agent = channel.get(
+            "userAgent",
             ""
         )
 
@@ -657,98 +634,59 @@ def create_m3u(channels):
             ""
         )
 
-        user_agent = channel.get(
-            "userAgent",
-            ""
-        )
-
         cookie = channel.get(
             "cookie",
             ""
         )
 
-        drm_scheme = channel.get(
-            "drmScheme",
-            ""
-        )
-
-        drm_license = channel.get(
-            "drmLicense",
-            ""
-        )
-
-        attributes = [
-            f'tvg-id="{escape_attr(channel["id"])}"',
-            f'tvg-name="{escape_attr(name)}"',
-        ]
-
-        if logo:
-
-            attributes.append(
-                f'tvg-logo="{escape_attr(logo)}"'
-            )
-
-        # ----------------------------------------------------
-        # M3U HTTP metadata
-        # ----------------------------------------------------
-
-        if user_agent:
-
-            attributes.append(
-                f'http-user-agent="{escape_attr(user_agent)}"'
-            )
-
-        if referrer:
-
-            attributes.append(
-                f'http-referrer="{escape_attr(referrer)}"'
-            )
-
-        if cookie:
-
-            attributes.append(
-                f'http-cookie="{escape_attr(cookie)}"'
-            )
-
         # ----------------------------------------------------
         # EXTINF
         # ----------------------------------------------------
 
-        extinf = (
-            "#EXTINF:-1 "
-            + " ".join(attributes)
-            + f",{name}"
+        info = (
+            '#EXTINF:-1 '
+            f'tvg-id="{attr(channel["id"])}" '
+            f'tvg-name="{attr(name)}"'
         )
 
-        lines.append(extinf)
+        if logo:
+
+            info += (
+                f' tvg-logo="{attr(logo)}"'
+            )
+
+        info += f",{name}"
+
+        lines.append(info)
 
         # ----------------------------------------------------
-        # Optional Kodi-style metadata
+        # Headers
         # ----------------------------------------------------
 
-        if origin:
+        if user_agent:
 
             lines.append(
-                f'#KODIPROP|inputstream.adaptive.stream_headers=Origin={origin}'
+                "#EXTVLCOPT:http-user-agent="
+                + user_agent
             )
 
         if referrer:
 
             lines.append(
-                f'#KODIPROP|inputstream.adaptive.stream_headers=Referer={referrer}'
+                "#EXTVLCOPT:http-referrer="
+                + referrer
             )
 
-        if drm_scheme:
+        if cookie:
 
             lines.append(
-                f'#KODIPROP|inputstream.adaptive.license_type={drm_scheme}'
+                "#EXTVLCOPT:http-cookie="
+                + cookie
             )
 
-        if drm_license:
-
-            lines.append(
-                f'#KODIPROP|inputstream.adaptive.license_key={drm_license}'
-            )
+        # ----------------------------------------------------
+        # URL
+        # ----------------------------------------------------
 
         lines.append(link)
 
@@ -780,27 +718,27 @@ def save_json(channels):
 def main():
 
     print()
-    print("=" * 65)
-    print("           AKASH → KB AUTO PLAYLIST")
-    print("=" * 65)
+    print("=" * 70)
+    print("             AKASH → KB AUTO PLAYLIST")
+    print("=" * 70)
 
-    # --------------------------------------------------------
-    # 1. SEARCH API
-    # --------------------------------------------------------
+    # ========================================================
+    # STEP 1
+    # ========================================================
 
     print()
-    print("[1/4] Loading channel list...")
+    print("[1/4] Loading channel IDs...")
 
     try:
 
-        search_data = request_json(
+        search_data = get_json(
             SEARCH_API
         )
 
     except Exception as error:
 
         print()
-        print("ERROR:")
+        print("SEARCH API ERROR:")
         print(error)
 
         raise SystemExit(1)
@@ -821,9 +759,9 @@ def main():
 
         raise SystemExit(1)
 
-    # --------------------------------------------------------
-    # 2. CHANNEL DETAILS
-    # --------------------------------------------------------
+    # ========================================================
+    # STEP 2
+    # ========================================================
 
     print()
     print("[2/4] Loading channel details...")
@@ -832,14 +770,16 @@ def main():
 
     seen_links = set()
 
-    for number, channel_id in enumerate(
+    success = 0
+    failed = 0
+
+    for index, channel_id in enumerate(
         ids,
         start=1
     ):
 
         print(
-            f"[{number}/{len(ids)}] "
-            f"ID: {channel_id}"
+            f"[{index}/{len(ids)}] ID: {channel_id}"
         )
 
         try:
@@ -852,20 +792,22 @@ def main():
 
             if not link:
 
+                failed += 1
+
                 print(
-                    "  -> SKIP: no stream URL"
+                    "  -> SKIP: stream URL not found"
                 )
 
                 continue
 
             # ------------------------------------------------
-            # Duplicate filtering
+            # Duplicate
             # ------------------------------------------------
 
             if link in seen_links:
 
                 print(
-                    "  -> SKIP: duplicate stream"
+                    "  -> SKIP: duplicate URL"
                 )
 
                 continue
@@ -873,10 +815,10 @@ def main():
             seen_links.add(link)
 
             # ------------------------------------------------
-            # Final name
+            # Name
             # ------------------------------------------------
 
-            channel["name"] = make_name(
+            channel["name"] = final_name(
                 channel["name"],
                 channel_id
             )
@@ -885,11 +827,19 @@ def main():
                 channel
             )
 
+            success += 1
+
             print(
                 f"  -> OK: {channel['name']}"
             )
 
+            print(
+                f"  -> M3U8: {link}"
+            )
+
         except Exception as error:
+
+            failed += 1
 
             print(
                 f"  -> ERROR: {error}"
@@ -897,34 +847,39 @@ def main():
 
         time.sleep(DELAY)
 
-    # --------------------------------------------------------
-    # 3. VALIDATION
-    # --------------------------------------------------------
+    # ========================================================
+    # STEP 3
+    # ========================================================
 
     print()
-    print("[3/4] Validating playlist...")
+    print("[3/4] Building playlist...")
 
     if not channels:
 
+        print()
         print(
-            "ERROR: No valid channels."
+            "ERROR: 0 valid channels."
+        )
+
+        print(
+            "The API response format may have changed."
         )
 
         raise SystemExit(1)
 
-    # --------------------------------------------------------
-    # 4. SAVE
-    # --------------------------------------------------------
-
-    print()
-    print("[4/4] Writing files...")
-
-    playlist = create_m3u(
+    m3u = create_m3u(
         channels
     )
 
+    # ========================================================
+    # STEP 4
+    # ========================================================
+
+    print()
+    print("[4/4] Saving files...")
+
     M3U_FILE.write_text(
-        playlist,
+        m3u,
         encoding="utf-8"
     )
 
@@ -932,24 +887,36 @@ def main():
         channels
     )
 
+    # ========================================================
+    # SUMMARY
+    # ========================================================
+
     print()
-    print("=" * 65)
-    print("                  COMPLETE")
-    print("=" * 65)
+    print("=" * 70)
+    print("                         DONE")
+    print("=" * 70)
 
     print(
-        f"Channels : {len(channels)}"
+        f"Total IDs      : {len(ids)}"
     )
 
     print(
-        f"M3U      : {M3U_FILE}"
+        f"Working streams: {success}"
     )
 
     print(
-        f"JSON     : {JSON_FILE}"
+        f"Failed         : {failed}"
     )
 
-    print("=" * 65)
+    print(
+        f"M3U file       : {M3U_FILE}"
+    )
+
+    print(
+        f"JSON file      : {JSON_FILE}"
+    )
+
+    print("=" * 70)
     print()
 
 
