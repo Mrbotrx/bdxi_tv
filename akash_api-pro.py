@@ -9,7 +9,7 @@ import requests
 
 
 # ============================================================
-# CONFIG
+# AKASH → KB AUTO M3U + MOD JSON
 # ============================================================
 
 SEARCH_API = (
@@ -22,16 +22,29 @@ CHANNEL_API = (
     "content-detail/pub/api/v6/channels/{}"
 )
 
+
+# ============================================================
+# OUTPUT
+# ============================================================
+
 M3U_FILE = Path("akash_DTH.m3u")
 JSON_FILE = Path("akash_DTH.json")
 
+
+# ============================================================
+# SETTINGS
+# ============================================================
+
 TIMEOUT = 30
 RETRIES = 3
-DELAY = 0.15
+DELAY = 0.20
+
+ORIGIN = "https://akashgo.com"
 
 DEFAULT_USER_AGENT = (
-    "Abu-Saeeidx/5.0.6 "
-    "(Linux;Android 11) AndroidXMedia"
+    "Mozilla/5.0 (Linux; Android 11) "
+    "AppleWebKit/537.36 "
+    "Chrome/131.0.0.0 Mobile Safari/537.36"
 )
 
 
@@ -48,10 +61,10 @@ session.headers.update({
 
 
 # ============================================================
-# HTTP
+# REQUEST JSON
 # ============================================================
 
-def get_json(url):
+def request_json(url):
 
     last_error = None
 
@@ -67,21 +80,49 @@ def get_json(url):
 
             response.raise_for_status()
 
-            return response.json()
+            # Normal JSON
+            try:
+                return response.json()
+
+            except ValueError:
+
+                # Some APIs return JSON with
+                # text/html content-type.
+                text = response.text.strip()
+
+                if not text:
+                    raise RuntimeError(
+                        "Empty API response"
+                    )
+
+                try:
+                    return json.loads(text)
+
+                except json.JSONDecodeError:
+
+                    raise RuntimeError(
+                        "API response is not JSON: "
+                        + response.headers.get(
+                            "content-type",
+                            "unknown"
+                        )
+                    )
 
         except Exception as error:
 
             last_error = error
 
             print(
-                f"    Request attempt "
-                f"{attempt}/{RETRIES} failed: {error}"
+                f"    Request failed "
+                f"{attempt}/{RETRIES}: {error}"
             )
 
             if attempt < RETRIES:
                 time.sleep(1)
 
-    raise RuntimeError(last_error)
+    raise RuntimeError(
+        f"Request failed: {last_error}"
+    )
 
 
 # ============================================================
@@ -104,7 +145,7 @@ def walk(value):
 
 
 # ============================================================
-# STRING CLEAN
+# CLEAN
 # ============================================================
 
 def clean(value):
@@ -127,23 +168,26 @@ def clean(value):
         "&"
     )
 
-    value = value.strip(
+    return value.strip(
         "\"' \t\r\n,;)]}"
     )
 
-    return value
-
 
 # ============================================================
-# URL
+# VALID URL
 # ============================================================
 
-def valid_http_url(value):
+def valid_url(value):
 
     value = clean(value)
 
     if value.startswith(
-        ("http://", "https://")
+        "https://"
+    ):
+        return value
+
+    if value.startswith(
+        "http://"
     ):
         return value
 
@@ -161,10 +205,10 @@ URL_REGEX = re.compile(
 
 
 # ============================================================
-# EXTRACT ALL URLS FROM ANY JSON
+# EXTRACT ALL URLS
 # ============================================================
 
-def extract_all_urls(data):
+def extract_urls(data):
 
     urls = []
     seen = set()
@@ -188,19 +232,12 @@ def extract_all_urls(data):
 
     for item in walk(data):
 
-        # -----------------------------------------------
-        # Direct string
-        # -----------------------------------------------
-
         if isinstance(item, str):
 
-            for match in URL_REGEX.findall(item):
-
+            for match in URL_REGEX.findall(
+                item
+            ):
                 add(match)
-
-        # -----------------------------------------------
-        # Dictionary values
-        # -----------------------------------------------
 
         elif isinstance(item, dict):
 
@@ -215,82 +252,32 @@ def extract_all_urls(data):
                 for match in URL_REGEX.findall(
                     value
                 ):
-
                     add(match)
 
     return urls
 
 
 # ============================================================
-# FIND STREAM URL
+# FIND VALUES BY KEY
 # ============================================================
 
-def find_stream(data):
-
-    urls = extract_all_urls(data)
-
-    # --------------------------------------------------------
-    # Highest priority: M3U8
-    # --------------------------------------------------------
-
-    for url in urls:
-
-        if ".m3u8" in url.lower():
-
-            return url
-
-    # --------------------------------------------------------
-    # DASH
-    # --------------------------------------------------------
-
-    for url in urls:
-
-        if ".mpd" in url.lower():
-
-            return url
-
-    # --------------------------------------------------------
-    # Generic live stream
-    # --------------------------------------------------------
-
-    keywords = (
-        "stream",
-        "live",
-        "playlist",
-        "manifest",
-        "playback",
-    )
-
-    for url in urls:
-
-        lower = url.lower()
-
-        if any(
-            word in lower
-            for word in keywords
-        ):
-
-            return url
-
-    return ""
-
-
-# ============================================================
-# FIND VALUE BY KEY
-# ============================================================
-
-def find_values_by_keys(data, wanted_keys):
+def find_values(data, keys):
 
     wanted = {
-        str(x).lower().replace("-", "_")
-        for x in wanted_keys
+        str(key)
+        .lower()
+        .replace("-", "_")
+        for key in keys
     }
 
-    values = []
+    result = []
 
     for obj in walk(data):
 
-        if not isinstance(obj, dict):
+        if not isinstance(
+            obj,
+            dict
+        ):
             continue
 
         for key, value in obj.items():
@@ -301,98 +288,19 @@ def find_values_by_keys(data, wanted_keys):
                 .replace("-", "_")
             )
 
-            if normalized not in wanted:
-                continue
+            if normalized in wanted:
 
-            value = clean(value)
+                value = clean(value)
 
-            if value:
-                values.append(value)
+                if value:
+                    result.append(value)
 
-    return values
+    return result
 
-
-# ============================================================
-# CHANNEL NAME
-# ============================================================
-
-def find_name(data):
-
-    keys = {
-        "name",
-        "channelname",
-        "channel_name",
-        "title",
-        "displayname",
-        "display_name",
-        "channelTitle",
-        "channel_title",
-    }
-
-    values = find_values_by_keys(
-        data,
-        keys
-    )
-
-    for value in values:
-
-        lower = value.lower()
-
-        if (
-            "http://" not in lower
-            and "https://" not in lower
-            and ".m3u8" not in lower
-            and len(value) <= 200
-        ):
-
-            return value
-
-    return ""
-
-
-# ============================================================
-# LOGO
-# ============================================================
-
-def find_logo(data):
-
-    keys = {
-        "logo",
-        "logo_url",
-        "logourl",
-        "image",
-        "image_url",
-        "imageurl",
-        "thumbnail",
-        "thumbnail_url",
-        "thumbnailurl",
-        "poster",
-        "icon",
-    }
-
-    values = find_values_by_keys(
-        data,
-        keys
-    )
-
-    for value in values:
-
-        if value.startswith(
-            ("http://", "https://")
-        ):
-
-            return value
-
-    return ""
-
-
-# ============================================================
-# OTHER METADATA
-# ============================================================
 
 def find_first(data, keys):
 
-    values = find_values_by_keys(
+    values = find_values(
         data,
         keys
     )
@@ -401,13 +309,17 @@ def find_first(data, keys):
 
 
 # ============================================================
-# IDS
+# GET CHANNEL IDS
 # ============================================================
 
 def extract_ids(data):
 
     ids = []
     seen = set()
+
+    # --------------------------------------------------------
+    # Priority IDs
+    # --------------------------------------------------------
 
     priority_keys = {
         "channelid",
@@ -416,13 +328,12 @@ def extract_ids(data):
         "content_id",
     }
 
-    # --------------------------------------------------------
-    # Priority IDs
-    # --------------------------------------------------------
-
     for obj in walk(data):
 
-        if not isinstance(obj, dict):
+        if not isinstance(
+            obj,
+            dict
+        ):
             continue
 
         for key, value in obj.items():
@@ -447,12 +358,15 @@ def extract_ids(data):
                 ids.append(value)
 
     # --------------------------------------------------------
-    # Normal ID
+    # Generic ID
     # --------------------------------------------------------
 
     for obj in walk(data):
 
-        if not isinstance(obj, dict):
+        if not isinstance(
+            obj,
+            dict
+        ):
             continue
 
         for key, value in obj.items():
@@ -481,36 +395,160 @@ def extract_ids(data):
 
 
 # ============================================================
-# CHANNEL API
+# NAME
+# ============================================================
+
+def find_name(data):
+
+    values = find_values(
+        data,
+        {
+            "name",
+            "channelName",
+            "channel_name",
+            "title",
+            "displayName",
+            "display_name",
+        }
+    )
+
+    for value in values:
+
+        lower = value.lower()
+
+        if (
+            "http://" not in lower
+            and "https://" not in lower
+            and ".m3u8" not in lower
+            and ".mpd" not in lower
+            and len(value) <= 200
+        ):
+
+            return value
+
+    return ""
+
+
+# ============================================================
+# LOGO
+# ============================================================
+
+def find_logo(data):
+
+    values = find_values(
+        data,
+        {
+            "logo",
+            "logoUrl",
+            "logo_url",
+            "image",
+            "imageUrl",
+            "image_url",
+            "thumbnail",
+            "thumbnailUrl",
+            "thumbnail_url",
+            "poster",
+            "icon",
+        }
+    )
+
+    for value in values:
+
+        url = valid_url(value)
+
+        if url:
+            return url
+
+    return ""
+
+
+# ============================================================
+# STREAM
+# ============================================================
+
+def find_stream(data):
+
+    # --------------------------------------------------------
+    # Known fields
+    # --------------------------------------------------------
+
+    values = find_values(
+        data,
+        {
+            "link",
+            "url",
+            "stream",
+            "streamUrl",
+            "stream_url",
+            "playUrl",
+            "play_url",
+            "playbackUrl",
+            "playback_url",
+            "source",
+            "src",
+            "manifest",
+            "m3u8",
+            "hls",
+            "mediaUrl",
+            "media_url",
+            "videoUrl",
+            "video_url",
+        }
+    )
+
+    # --------------------------------------------------------
+    # M3U8 first
+    # --------------------------------------------------------
+
+    for value in values:
+
+        url = valid_url(value)
+
+        if ".m3u8" in url.lower():
+            return url
+
+    # --------------------------------------------------------
+    # MPD fallback
+    # --------------------------------------------------------
+
+    for value in values:
+
+        url = valid_url(value)
+
+        if ".mpd" in url.lower():
+            return url
+
+    # --------------------------------------------------------
+    # Scan every URL
+    # --------------------------------------------------------
+
+    urls = extract_urls(data)
+
+    for url in urls:
+
+        if ".m3u8" in url.lower():
+            return url
+
+    for url in urls:
+
+        if ".mpd" in url.lower():
+            return url
+
+    return ""
+
+
+# ============================================================
+# GET CHANNEL
 # ============================================================
 
 def get_channel(channel_id):
 
-    url = CHANNEL_API.format(
+    api_url = CHANNEL_API.format(
         channel_id
     )
 
-    data = get_json(url)
-
-    name = find_name(data)
-
-    logo = find_logo(data)
-
-    link = find_stream(data)
-
-    origin = find_first(
-        data,
-        {
-            "origin",
-        }
-    )
-
-    referrer = find_first(
-        data,
-        {
-            "referrer",
-            "referer",
-        }
+    data = request_json(
+        api_url
     )
 
     user_agent = find_first(
@@ -519,6 +557,14 @@ def get_channel(channel_id):
             "userAgent",
             "user_agent",
             "useragent",
+        }
+    )
+
+    referrer = find_first(
+        data,
+        {
+            "referrer",
+            "referer",
         }
     )
 
@@ -546,54 +592,78 @@ def get_channel(channel_id):
     )
 
     return {
+
         "id": channel_id,
-        "name": name,
-        "link": link,
-        "logo": logo,
-        "origin": origin,
+
+        "name": find_name(
+            data
+        ),
+
+        "link": find_stream(
+            data
+        ),
+
+        "logo": find_logo(
+            data
+        ),
+
+        # Fixed
+        "origin": ORIGIN,
+
         "referrer": referrer,
+
         "userAgent": (
             user_agent
             or DEFAULT_USER_AGENT
         ),
+
         "cookie": cookie,
+
         "drmScheme": drm_scheme,
+
         "drmLicense": drm_license,
     }
 
 
 # ============================================================
-# NAME
+# NAME + KB
 # ============================================================
 
-def final_name(name, channel_id):
+def make_name(
+    name,
+    channel_id
+):
 
     name = clean(name)
 
     if not name:
 
-        name = f"Channel {channel_id}"
+        name = (
+            f"Channel {channel_id}"
+        )
 
     # Remove existing KB
     name = re.sub(
         r"\s+KB\s*$",
         "",
         name,
-        flags=re.IGNORECASE,
+        flags=re.IGNORECASE
     )
 
-    return f"{name} KB"
+    return (
+        f"{name.strip()} KB"
+    )
 
 
 # ============================================================
-# M3U ATTRIBUTE ESCAPE
+# M3U ATTRIBUTE
 # ============================================================
 
 def attr(value):
 
-    value = clean(value)
-
-    return value.replace(
+    return clean(
+        value
+    ).replace(
         '"',
         "'"
     )
@@ -606,13 +676,12 @@ def attr(value):
 def create_m3u(channels):
 
     lines = [
-        "#EXTM3U",
-        "",
+        "#EXTM3U"
     ]
 
     for channel in channels:
 
-        name = final_name(
+        name = make_name(
             channel["name"],
             channel["id"]
         )
@@ -624,9 +693,11 @@ def create_m3u(channels):
             ""
         )
 
-        user_agent = channel.get(
-            "userAgent",
-            ""
+        user_agent = (
+            channel.get(
+                "userAgent"
+            )
+            or DEFAULT_USER_AGENT
         )
 
         referrer = channel.get(
@@ -643,24 +714,35 @@ def create_m3u(channels):
         # EXTINF
         # ----------------------------------------------------
 
-        info = (
-            '#EXTINF:-1 '
+        line = (
+            "#EXTINF:-1 "
             f'tvg-id="{attr(channel["id"])}" '
             f'tvg-name="{attr(name)}"'
         )
 
         if logo:
 
-            info += (
+            line += (
                 f' tvg-logo="{attr(logo)}"'
             )
 
-        info += f",{name}"
+        line += (
+            f",{name}"
+        )
 
-        lines.append(info)
+        lines.append(line)
 
         # ----------------------------------------------------
-        # Headers
+        # Origin
+        # ----------------------------------------------------
+
+        lines.append(
+            "#EXTVLCOPT:http-origin="
+            + ORIGIN
+        )
+
+        # ----------------------------------------------------
+        # User-Agent
         # ----------------------------------------------------
 
         if user_agent:
@@ -670,12 +752,20 @@ def create_m3u(channels):
                 + user_agent
             )
 
+        # ----------------------------------------------------
+        # Referrer
+        # ----------------------------------------------------
+
         if referrer:
 
             lines.append(
                 "#EXTVLCOPT:http-referrer="
                 + referrer
             )
+
+        # ----------------------------------------------------
+        # Cookie
+        # ----------------------------------------------------
 
         if cookie:
 
@@ -690,24 +780,100 @@ def create_m3u(channels):
 
         lines.append(link)
 
-        lines.append("")
+    lines.append("")
 
-    return "\n".join(lines)
+    return "\n".join(
+        lines
+    )
 
 
 # ============================================================
-# SAVE JSON
+# CREATE MOD JSON
 # ============================================================
 
-def save_json(channels):
+def create_mod_json(channels):
+
+    output = []
+
+    for channel in channels:
+
+        item = {
+
+            "name": make_name(
+                channel["name"],
+                channel["id"]
+            ),
+
+            "link": channel["link"],
+
+            "logo": channel.get(
+                "logo",
+                ""
+            ),
+
+            "origin": ORIGIN,
+
+            "referrer": channel.get(
+                "referrer",
+                ""
+            ),
+
+            "userAgent": (
+                channel.get(
+                    "userAgent"
+                )
+                or DEFAULT_USER_AGENT
+            ),
+
+            "cookie": channel.get(
+                "cookie",
+                ""
+            ),
+
+            "drmScheme": channel.get(
+                "drmScheme",
+                ""
+            ),
+
+            "drmLicense": channel.get(
+                "drmLicense",
+                ""
+            ),
+        }
+
+        output.append(item)
+
+    return output
+
+
+# ============================================================
+# SAVE FILES
+# ============================================================
+
+def save_files(channels):
+
+    # M3U
+    m3u = create_m3u(
+        channels
+    )
+
+    M3U_FILE.write_text(
+        m3u,
+        encoding="utf-8"
+    )
+
+    # MOD JSON
+    mod_data = create_mod_json(
+        channels
+    )
 
     JSON_FILE.write_text(
         json.dumps(
-            channels,
+            mod_data,
             ensure_ascii=False,
-            indent=2,
+            indent=2
         ),
-        encoding="utf-8",
+        encoding="utf-8"
     )
 
 
@@ -719,7 +885,9 @@ def main():
 
     print()
     print("=" * 70)
-    print("             AKASH → KB AUTO PLAYLIST")
+    print(
+        "          AKASH → KB M3U8 + MOD AUTO SYSTEM"
+    )
     print("=" * 70)
 
     # ========================================================
@@ -727,18 +895,22 @@ def main():
     # ========================================================
 
     print()
-    print("[1/4] Loading channel IDs...")
+    print(
+        "[1/5] Loading channel IDs..."
+    )
 
     try:
 
-        search_data = get_json(
+        search_data = request_json(
             SEARCH_API
         )
 
     except Exception as error:
 
-        print()
-        print("SEARCH API ERROR:")
+        print(
+            "SEARCH API ERROR:"
+        )
+
         print(error)
 
         raise SystemExit(1)
@@ -753,33 +925,33 @@ def main():
 
     if not ids:
 
-        print(
-            "ERROR: No channel IDs found."
+        raise SystemExit(
+            "No channel IDs found."
         )
-
-        raise SystemExit(1)
 
     # ========================================================
     # STEP 2
     # ========================================================
 
     print()
-    print("[2/4] Loading channel details...")
+    print(
+        "[2/5] Loading channel details..."
+    )
 
     channels = []
 
     seen_links = set()
 
-    success = 0
     failed = 0
 
-    for index, channel_id in enumerate(
+    for number, channel_id in enumerate(
         ids,
-        start=1
+        1
     ):
 
         print(
-            f"[{index}/{len(ids)}] ID: {channel_id}"
+            f"[{number}/{len(ids)}] "
+            f"ID: {channel_id}"
         )
 
         try:
@@ -788,53 +960,58 @@ def main():
                 channel_id
             )
 
-            link = channel["link"]
+            link = channel[
+                "link"
+            ]
 
             if not link:
 
                 failed += 1
 
                 print(
-                    "  -> SKIP: stream URL not found"
+                    "  -> SKIP: "
+                    "M3U8 not found"
                 )
 
                 continue
-
-            # ------------------------------------------------
-            # Duplicate
-            # ------------------------------------------------
 
             if link in seen_links:
 
                 print(
-                    "  -> SKIP: duplicate URL"
+                    "  -> SKIP: "
+                    "duplicate"
                 )
 
                 continue
 
-            seen_links.add(link)
+            seen_links.add(
+                link
+            )
 
-            # ------------------------------------------------
-            # Name
-            # ------------------------------------------------
-
-            channel["name"] = final_name(
+            channel["name"] = make_name(
                 channel["name"],
                 channel_id
             )
+
+            channel["origin"] = ORIGIN
 
             channels.append(
                 channel
             )
 
-            success += 1
-
             print(
-                f"  -> OK: {channel['name']}"
+                f"  -> OK: "
+                f"{channel['name']}"
             )
 
             print(
-                f"  -> M3U8: {link}"
+                f"  -> M3U8: "
+                f"{link}"
+            )
+
+            print(
+                f"  -> ORIGIN: "
+                f"{ORIGIN}"
             )
 
         except Exception as error:
@@ -845,46 +1022,45 @@ def main():
                 f"  -> ERROR: {error}"
             )
 
-        time.sleep(DELAY)
+        time.sleep(
+            DELAY
+        )
 
     # ========================================================
     # STEP 3
     # ========================================================
 
     print()
-    print("[3/4] Building playlist...")
+    print(
+        "[3/5] Preparing M3U8..."
+    )
 
     if not channels:
 
-        print()
-        print(
-            "ERROR: 0 valid channels."
+        raise SystemExit(
+            "No working channels found."
         )
-
-        print(
-            "The API response format may have changed."
-        )
-
-        raise SystemExit(1)
-
-    m3u = create_m3u(
-        channels
-    )
 
     # ========================================================
     # STEP 4
     # ========================================================
 
     print()
-    print("[4/4] Saving files...")
-
-    M3U_FILE.write_text(
-        m3u,
-        encoding="utf-8"
+    print(
+        "[4/5] Preparing MOD JSON..."
     )
 
-    save_json(
+    save_files(
         channels
+    )
+
+    # ========================================================
+    # STEP 5
+    # ========================================================
+
+    print()
+    print(
+        "[5/5] Files created successfully."
     )
 
     # ========================================================
@@ -893,32 +1069,43 @@ def main():
 
     print()
     print("=" * 70)
-    print("                         DONE")
+    print(
+        "                         DONE"
+    )
     print("=" * 70)
 
     print(
-        f"Total IDs      : {len(ids)}"
+        f"Total IDs       : {len(ids)}"
     )
 
     print(
-        f"Working streams: {success}"
+        f"Working streams : {len(channels)}"
     )
 
     print(
-        f"Failed         : {failed}"
+        f"Failed          : {failed}"
     )
 
     print(
-        f"M3U file       : {M3U_FILE}"
+        f"Origin          : {ORIGIN}"
+    )
+
+    print()
+    print(
+        f"M3U             : {M3U_FILE}"
     )
 
     print(
-        f"JSON file      : {JSON_FILE}"
+        f"MOD JSON        : {JSON_FILE}"
     )
 
     print("=" * 70)
     print()
 
+
+# ============================================================
+# RUN
+# ============================================================
 
 if __name__ == "__main__":
     main()
