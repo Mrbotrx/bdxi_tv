@@ -2,11 +2,11 @@
 ######################################################################
 #                   📡 IPTV PLAYLIST - ALL m3u8 STREAMS
 ######################################################################
-# 📺 Total Channels : 57
-# 📊 Total Streams  : 57
+# 📺 Total Channels : 55
+# 📊 Total Streams  : 55
 # 🔥 ALL m3u8 links found in API
 ######################################################################
-# 🕒 Updated : 04:14 PM | 05-Sep-2026
+# 🕒 Updated : 06:33 PM | 05-Sep-2026
 ######################################################################
 
 #EXTINF:-1 tvg-logo="https://tstatic.akash-go.com/cms-ui/images/custom-content/1784629064327.png" group-title="News",Somoy tv
@@ -72,17 +72,11 @@ https://nomawnoijl.gpcdn.net/akash/crazy_ex/playlist.m3u8
 #EXTINF:-1 tvg-logo="https://tstatic.akash-go.com/cms-ui/images/custom-content/1770380601958.png" group-title="Sports",Sports Range
 https://nomawnoijl.gpcdn.net/akash/sportrange/playlist.m3u8
 
-#EXTINF:-1 tvg-logo="https://tstatic.akash-go.com/cms-ui/images/custom-content/1788548151868.png" group-title="Sports",PL Live 5
-https://owrcovcrpy.gpcdn.net/bpk-tv/1706/output/index.m3u8
-
 #EXTINF:-1 tvg-logo="https://tstatic.akash-go.com/cms-ui/images/custom-content/1739906659479.png" group-title="Entertainment",Sony AATH
 https://owrcovcrpy.gpcdn.net/bpk-tv/1732/output/index.m3u8
 
 #EXTINF:-1 tvg-logo="https://tstatic.akash-go.com/cms-ui/images/custom-content/1770188008067.png" group-title="Entertainment",Channel 9 HD
 https://owrcovcrpy.gpcdn.net/bpk-tv/1729/output/index.m3u8
-
-#EXTINF:-1 tvg-logo="https://tstatic.akash-go.com/cms-ui/images/custom-content/1788548894180.png" group-title="Sports",PL Live 4
-https://owrcovcrpy.gpcdn.net/bpk-tv/1708/output/index.m3u8
 
 #EXTINF:-1 tvg-logo="https://tstatic.akash-go.com/cms-ui/images/custom-content/1742713000749.png" group-title="Entertainment",Deepto TV HD
 https://owrcovcrpy.gpcdn.net/bpk-tv/1711/output/index.m3u8
