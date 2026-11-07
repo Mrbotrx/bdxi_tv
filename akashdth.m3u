@@ -2,11 +2,11 @@
 ######################################################################
 #                   📡 IPTV PLAYLIST - ALL m3u8 STREAMS
 ######################################################################
-# 📺 Total Channels : 59
-# 📊 Total Streams  : 59
+# 📺 Total Channels : 58
+# 📊 Total Streams  : 58
 # 🔥 ALL m3u8 links found in API
 ######################################################################
-# 🕒 Updated : 04:41 PM | 07-Nov-2026
+# 🕒 Updated : 08:36 PM | 07-Nov-2026
 ######################################################################
 
 #EXTINF:-1 tvg-logo="https://tstatic.akash-go.com/cms-ui/images/custom-content/1784629064327.png" group-title="News",Somoy TV
@@ -24,7 +24,7 @@ https://j6nfugukcl.gpcdn.net/tile_3/master.m3u8
 #EXTINF:-1 tvg-logo="https://tstatic.akash-go.com/cms-ui/images/custom-content/1791472105821.png" group-title="Sports",T Sports HD
 https://owrcovcrpy.gpcdn.net/bpk-tv/1721/output/index.m3u8
 
-#EXTINF:-1 tvg-logo="https://tstatic.akash-go.com/cms-ui/images/custom-content/1794062707373.png" group-title="Sports",PL Live 1
+#EXTINF:-1 tvg-logo="https://tstatic.akash-go.com/cms-ui/images/custom-content/1794078908447.png" group-title="Sports",PL Live 1
 https://owrcovcrpy.gpcdn.net/bpk-tv/1707/output/index.m3u8
 
 #EXTINF:-1 tvg-logo="https://tstatic.akash-go.com/cms-ui/images/custom-content/1791450888832.png" group-title="News",TRT World HD
@@ -101,9 +101,6 @@ https://nomawnoijl.gpcdn.net/akash/crazy_ex/playlist.m3u8
 
 #EXTINF:-1 tvg-logo="https://tstatic.akash-go.com/cms-ui/images/custom-content/1770380601958.png" group-title="Sports",Sports Range
 https://nomawnoijl.gpcdn.net/akash/sportrange/playlist.m3u8
-
-#EXTINF:-1 tvg-logo="https://tstatic.akash-go.com/cms-ui/images/custom-content/1793506995369.png" group-title="News",ATN News
-https://owrcovcrpy.gpcdn.net/bpk-tv/1706/output/index.m3u8
 
 #EXTINF:-1 tvg-logo="https://tstatic.akash-go.com/cms-ui/images/custom-content/1739906659479.png" group-title="Entertainment",Sony AATH
 https://owrcovcrpy.gpcdn.net/bpk-tv/1732/output/index.m3u8
